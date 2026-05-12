@@ -65,3 +65,6 @@ class GiftService:
             logger.warning("[gift_filter] persistence skipped: %s", exc)
 
         return {"run_id": run_id, "results": [normalize_ranked_product(r) for r in ranked]}
+    
+
+# Additional methods for gift intelligence can be added here, such as fetching past runs, detailed product insights, etc.
