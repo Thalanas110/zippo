@@ -11,12 +11,16 @@ import { rankedProductToUiProduct } from "@/lib/zippo-mappers";
 
 const BRAND = "#8B1520";
 
+// this is supposed to be a temporary fallback while we work on the backend integration for the catalog search API. It should be removed once the real API is working and returning results properly.
+// replace this with actual API call results in the useEffect below, and remove the fallbackTopPicks declaration. The shape of the data should match UiProduct from the zippo-mappers file. The images can be placeholders for now, but should ideally come from the backend as well.
 const fallbackTopPicks = [
   { id: 1, name: "Gordon's Bibingka Box", store: "Gordon's Market", location: "Local", price: 250, match: 95, image: "https://images.unsplash.com/photo-1718934628487-f600d3861d0e?w=400&auto=format&fit=crop", badge: "🏆 #1 Pick" },
   { id: 2, name: "Subic Bay Pasalubong Set", store: "SBMA Pasalubong", location: "Local", price: 480, match: 88, image: "https://images.unsplash.com/photo-1693165236987-c1ae0418fa89?w=400&auto=format&fit=crop" },
   { id: 3, name: "Barrio Fiesta Hamper", store: "ZC Gift Gallery", location: "Olongapo", price: 499, match: 81, image: "https://images.unsplash.com/photo-1773450970959-cef81e9b1053?w=400&auto=format&fit=crop" },
   { id: 4, name: "Premium Gift Box", store: "Olongapo Fresh", location: "Olongapo", price: 699, match: 78, image: "https://images.unsplash.com/photo-1545844568-98bb15133ec0?w=400&auto=format&fit=crop" },
 ];
+
+// These are hardcoded values for the dropdown filters. In the future, these must also be fetched from the backend to allow for more dynamic filtering options and to reflect actual available data.
 
 const occasions = [
   { id: "birthday", emoji: "🎂", label: "Birthday" },
@@ -26,6 +30,7 @@ const occasions = [
   { id: "valentines", emoji: "❤️", label: "Valentine's" },
 ];
 
+// These categories are also hardcoded for now, but should ideally come from the backend to reflect actual product categorization and to allow for easier updates in the future without needing frontend code changes.
 const categories = [
   { emoji: "🍱", label: "Food" },
   { emoji: "💐", label: "Flowers" },
