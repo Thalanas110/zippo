@@ -3,6 +3,37 @@ const BASE =
 
 const AUTH_STORAGE_KEY = "zippo.auth.session";
 
+class PublicApiError extends Error {
+  status: number;
+  path: string;
+
+  constructor(path: string, status: number, message: string) {
+    super(message);
+    this.name = "PublicApiError";
+    this.path = path;
+    this.status = status;
+  }
+}
+
+function getPublicErrorMessage(path: string, status: number): string {
+  if (path === "/api/auth/signin" && (status === 400 || status === 401)) {
+    return "Invalid email or password.";
+  }
+  if (status === 401) {
+    return "Your session has expired. Please sign in again.";
+  }
+  if (status === 403) {
+    return "You do not have permission to perform this action.";
+  }
+  if (status === 404) {
+    return "Requested data was not found.";
+  }
+  if (status >= 500) {
+    return "Server error. Please try again in a moment.";
+  }
+  return "Request failed. Please try again.";
+}
+
 function getStoredAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
@@ -38,8 +69,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`API ${path} failed (${res.status}): ${text || res.statusText}`);
+    throw new PublicApiError(path, res.status, getPublicErrorMessage(path, res.status));
   }
   if (res.status === 204) {
     return {} as T;
@@ -297,6 +327,24 @@ export interface StoreProductPayload {
   local_vendor: boolean;
 }
 
+export interface StoreOwnerOrderRow {
+  order_item_id?: number | string | null;
+  order_id?: number | string | null;
+  product_id?: number | string | null;
+  product_name?: string;
+  quantity?: number;
+  unit_price?: number;
+  line_total?: number;
+  status?: string;
+  occasion?: string;
+  recipient_type?: string;
+  buyer_user_id?: number | string | null;
+  total_price?: number;
+  store_id?: number | string | null;
+  store_name?: string;
+  created_at?: string;
+}
+
 export interface DriverTask {
   task_id: number | string;
   order_id?: number | string;
@@ -412,6 +460,8 @@ export const api = {
     put<{ product_id: number | string; status: string }>(`/api/store-owner/products/${productId}`, b),
   deleteStoreProduct: (productId: number | string) =>
     del<{ product_id: number | string; status: string }>(`/api/store-owner/products/${productId}`),
+  getStoreOwnerOrders: (ownerUserId: number) =>
+    get<StoreOwnerOrderRow[]>(`/api/store-owner/${ownerUserId}/orders`),
   getDriverTasks: (driverUserId: number) => get<DriverTasksResponse>(`/api/driver/${driverUserId}/tasks`),
   updateDriverTask: (taskId: number | string, b: { status: DriverTask["status"]; note?: string }) =>
     patch<{ task_id: number | string; status: string }>(`/api/driver/tasks/${taskId}`, b),

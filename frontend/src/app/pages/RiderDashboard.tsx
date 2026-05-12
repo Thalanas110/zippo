@@ -1,37 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import {
-  Truck, MapPin, Clock, Star, CheckCircle2, Navigation,
-  TrendingUp, Bell, LogOut, Settings, LayoutDashboard,
-  Package, ArrowLeft, Menu, X, Zap, Route, Phone, Store,
+  Truck,
+  MapPin,
+  CheckCircle2,
+  Navigation,
+  TrendingUp,
+  Bell,
+  LogOut,
+  Settings,
+  LayoutDashboard,
+  Package,
+  ArrowLeft,
+  Menu,
+  X,
+  Route,
+  Phone,
+  Store,
 } from "lucide-react";
 import { ZippoLogo } from "../components/ZippoLogo";
 import { useGift } from "../context/GiftContext";
 import { api } from "@/lib/api";
 
 const COLOR = "#059669";
-
-const fallbackEarningsData = [
-  { day: "Mon", earned: 480 }, { day: "Tue", earned: 640 },
-  { day: "Wed", earned: 320 }, { day: "Thu", earned: 720 },
-  { day: "Fri", earned: 560 }, { day: "Sat", earned: 880 },
-  { day: "Sun", earned: 440 },
-];
-
-const fallbackQueue = [
-  { id: "ZIP-0042", gift: "Barrio Fiesta Hamper", store: "Gordon's Market", address: "Barangay 5, Olongapo", customer: "Maria Cruz", distance: "1.8 km", eta: "18 min", amount: 499, priority: "high" },
-  { id: "ZIP-0043", gift: "Gordon's Bibingka Box", store: "Gordon's Market", address: "East Bajac-Bajac", customer: "Juan Santos", distance: "3.2 km", eta: "31 min", amount: 250, priority: "normal" },
-  { id: "ZIP-0044", gift: "Premium Gift Box", store: "ZC Gift Gallery", address: "Sta. Rita", customer: "Ana Garcia", distance: "4.6 km", eta: "45 min", amount: 699, priority: "normal" },
-];
-
-const fallbackToday = [
-  { id: "ZIP-0038", gift: "Bibingka Box", store: "Gordon's Market", time: "8:15 AM", status: "delivered", amount: 250 },
-  { id: "ZIP-0039", gift: "Mango Set", store: "SBMA Pasalubong", time: "9:02 AM", status: "delivered", amount: 180 },
-  { id: "ZIP-0040", gift: "Fiesta Hamper", store: "Gordon's Market", time: "9:45 AM", status: "delivered", amount: 499 },
-  { id: "ZIP-0041", gift: "Gordon's Bibingka", store: "Gordon's Market", time: "10:20 AM", status: "active", amount: 250 },
-];
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Tab = "overview" | "deliveries" | "earnings" | "profile";
+
+type UiTask = {
+  id: string;
+  gift: string;
+  store: string;
+  address: string;
+  customer: string;
+  time: string;
+  status: "assigned" | "picked_up" | "in_transit" | "delivered" | "failed" | "cancelled";
+  isActive: boolean;
+};
 
 const navItems: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -58,7 +63,7 @@ function SidebarNav({
       <div className="px-4 py-3 border-b border-gray-100">
         <div className="flex items-center justify-between rounded-xl p-3" style={{ background: online ? "#ECFDF5" : "#F9FAFB" }}>
           <div>
-            <div className="text-xs" style={{ color: online ? COLOR : "#6B7280", fontWeight: 700 }}>{online ? "● Online" : "○ Offline"}</div>
+            <div className="text-xs" style={{ color: online ? COLOR : "#6B7280", fontWeight: 700 }}>{online ? "Online" : "Offline"}</div>
             <div className="text-[10px] text-gray-400">Tap to {online ? "go offline" : "go online"}</div>
           </div>
           <button
@@ -100,82 +105,139 @@ function SidebarNav({
   );
 }
 
+function toUiTime(value: unknown): string {
+  if (!value) return "N/A";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
+
+function isToday(value: unknown): boolean {
+  if (!value) return false;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function dayOfWeek(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return WEEK_DAYS[date.getDay() === 0 ? 6 : date.getDay() - 1];
+}
+
 export default function RiderDashboard() {
-  const { numericUserId, authLoading, isAuthenticated, userName } = useGift();
+  const { numericUserId, authLoading, isAuthenticated, authRole, userName } = useGift();
   const [tab, setTab] = useState<Tab>("overview");
   const [online, setOnline] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [driverTasks, setDriverTasks] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (authLoading) return;
+    if (!isAuthenticated) {
       window.location.href = "/login";
+      return;
     }
-  }, [authLoading, isAuthenticated]);
+    if (authRole !== "driver") {
+      window.location.href = "/app/home";
+    }
+  }, [authLoading, isAuthenticated, authRole]);
 
   useEffect(() => {
     const loadTasks = async () => {
-      if (!numericUserId) return;
+      if (!numericUserId || !isAuthenticated || authRole !== "driver") return;
+      setLoading(true);
+      setError("");
       try {
         const response = await api.getDriverTasks(numericUserId);
-        setDriverTasks(response.tasks as Array<Record<string, unknown>>);
+        setDriverTasks((response.tasks ?? []) as Array<Record<string, unknown>>);
       } catch {
-        // Keep fallback data if backend fails.
+        setDriverTasks([]);
+        setError("Failed to load rider tasks. Please try again.");
+      } finally {
+        setLoading(false);
       }
     };
 
     void loadTasks();
-  }, [numericUserId]);
+  }, [numericUserId, isAuthenticated, authRole]);
 
-  const todayDeliveries = useMemo(() => {
-    const mapped = driverTasks.map((task) => ({
-      id: `ZIP-${String(task.order_id ?? task.task_id ?? "0000")}`,
-      gift: String(task.dropoff_label ?? "Delivery Task"),
-      store: String(task.pickup_label ?? "Pickup Point"),
-      time: String(task.created_at ?? "Today"),
-      status: String(task.status ?? "assigned") === "delivered" ? "delivered" : "active",
-      amount: 0,
-    }));
-    return mapped.length > 0 ? mapped : fallbackToday;
+  const tasks = useMemo<UiTask[]>(
+    () =>
+      driverTasks.map((task) => {
+        const status = String(task.status ?? "assigned") as UiTask["status"];
+        return {
+          id: `ZIP-${String(task.order_id ?? task.task_id ?? "0000")}`,
+          gift: String(task.dropoff_label ?? "Delivery Task"),
+          store: String(task.pickup_label ?? "Pickup Point"),
+          address: String(task.dropoff_label ?? "N/A"),
+          customer: "Recipient",
+          time: toUiTime(task.created_at),
+          status,
+          isActive: status === "assigned" || status === "picked_up" || status === "in_transit",
+        };
+      }),
+    [driverTasks],
+  );
+
+  const todayDeliveries = useMemo(
+    () => tasks.filter((task, idx) => isToday(driverTasks[idx]?.created_at)),
+    [tasks, driverTasks],
+  );
+
+  const deliveryQueue = useMemo(
+    () => tasks.filter((task) => task.isActive).slice(0, 8),
+    [tasks],
+  );
+
+  const completedCount = useMemo(
+    () => tasks.filter((task) => task.status === "delivered").length,
+    [tasks],
+  );
+
+  const totalCount = tasks.length;
+  const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const weeklyCompletedData = useMemo(() => {
+    const counts = new Map<string, number>(WEEK_DAYS.map((d) => [d, 0]));
+    driverTasks.forEach((task) => {
+      if (String(task.status ?? "") !== "delivered") return;
+      const day = dayOfWeek(task.created_at);
+      if (!day) return;
+      counts.set(day, (counts.get(day) ?? 0) + 1);
+    });
+    return WEEK_DAYS.map((day) => ({ day, completed: counts.get(day) ?? 0 }));
   }, [driverTasks]);
 
-  const deliveryQueue = useMemo(() => {
-    const mapped = driverTasks
-      .filter((task) => String(task.status ?? "") !== "delivered")
-      .slice(0, 8)
-      .map((task, idx) => ({
-        id: `ZIP-${String(task.order_id ?? task.task_id ?? idx + 1)}`,
-        gift: String(task.dropoff_label ?? "Delivery Task"),
-        store: String(task.pickup_label ?? "Pickup Point"),
-        address: String(task.dropoff_label ?? "Olongapo"),
-        customer: "Recipient",
-        distance: "—",
-        eta: "Pending",
-        amount: 0,
-        priority: idx === 0 ? "high" : "normal",
-      }));
-    return mapped.length > 0 ? mapped : fallbackQueue;
+  const monthlyCompleted = useMemo(() => {
+    const now = new Date();
+    return driverTasks.filter((task) => {
+      if (String(task.status ?? "") !== "delivered") return false;
+      const d = new Date(String(task.created_at ?? ""));
+      return !Number.isNaN(d.getTime()) && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }).length;
   }, [driverTasks]);
-
-  const earningsData = useMemo(() => {
-    if (todayDeliveries.length === 0) return fallbackEarningsData;
-    return fallbackEarningsData.map((row, idx) => ({
-      ...row,
-      earned: row.earned + idx * 10,
-    }));
-  }, [todayDeliveries.length]);
 
   const kpis = [
-    { label: "Deliveries Today", value: String(todayDeliveries.length), delta: "+2", color: COLOR, icon: Truck },
-    { label: "Earnings Today", value: "₱640", delta: "+₱80", color: "#2563EB", icon: TrendingUp },
-    { label: "Avg Rating", value: "4.9 ⭐", delta: "—", color: "#D97706", icon: Star },
-    { label: "Distance (km)", value: String((todayDeliveries.length * 3.2).toFixed(1)), delta: "+3.2", color: "#7C3AED", icon: Route },
+    { label: "Deliveries Today", value: String(todayDeliveries.length), delta: "", color: COLOR, icon: Truck },
+    { label: "Active Tasks", value: String(deliveryQueue.length), delta: "", color: "#2563EB", icon: Package },
+    { label: "Completed", value: String(completedCount), delta: "", color: "#D97706", icon: CheckCircle2 },
+    { label: "Completion Rate", value: `${completionRate}%`, delta: "", color: "#7C3AED", icon: Route },
   ];
 
-  const riderLabel = `${userName} · Rider #04`;
+  const riderLabel = `${userName} - Rider`;
+  const activeTask = deliveryQueue[0] ?? null;
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F0FDF8" }}>
+    <div className="min-h-screen flex overflow-x-hidden" style={{ background: "#F0FDF8" }}>
       <aside className="hidden md:flex flex-col w-56 lg:w-60 min-h-screen bg-white border-r border-green-100 fixed top-0 left-0 z-20 shadow-sm">
         <div className="px-5 py-5 shrink-0" style={{ background: COLOR }}>
           <ZippoLogo size="sm" light />
@@ -229,16 +291,19 @@ export default function RiderDashboard() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 md:p-8">
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          )}
+
           {tab === "overview" && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${kpi.color}15` }}>
                         <kpi.icon className="w-4 h-4" style={{ color: kpi.color }} />
                       </div>
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#F0FDF4", color: COLOR, fontWeight: 700 }}>{kpi.delta}</span>
                     </div>
                     <div className="text-2xl" style={{ color: kpi.color, fontWeight: 900 }}>{kpi.value}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{kpi.label}</div>
@@ -251,32 +316,32 @@ export default function RiderDashboard() {
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
                     <span className="text-white text-xs" style={{ fontWeight: 700 }}>
-                      ACTIVE DELIVERY · {todayDeliveries.find((d) => d.status === "active")?.id ?? "No active task"}
+                      ACTIVE DELIVERY - {activeTask?.id ?? "No active task"}
                     </span>
                   </div>
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <div className="flex-1">
                       <div className="text-white text-lg" style={{ fontWeight: 800 }}>
-                        {todayDeliveries.find((d) => d.status === "active")?.gift ?? "Awaiting assignment"}
+                        {activeTask?.gift ?? "Awaiting assignment"}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-green-200 text-sm">
-                        <Store className="w-3.5 h-3.5" />Pickup: {todayDeliveries.find((d) => d.status === "active")?.store ?? "—"}
+                        <Store className="w-3.5 h-3.5" />Pickup: {activeTask?.store ?? "N/A"}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-green-200 text-sm">
-                        <MapPin className="w-3.5 h-3.5" />{deliveryQueue[0]?.address ?? "Olongapo"}
+                        <MapPin className="w-3.5 h-3.5" />{activeTask?.address ?? "N/A"}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-green-200 text-sm">
-                        <Phone className="w-3.5 h-3.5" />{deliveryQueue[0]?.customer ?? "Recipient"}
+                        <Phone className="w-3.5 h-3.5" />{activeTask?.customer ?? "Recipient"}
                       </div>
                     </div>
                     <div className="flex gap-3">
                       <div className="bg-white/20 rounded-xl p-3 text-center">
-                        <div className="text-white text-xl" style={{ fontWeight: 900 }}>25</div>
-                        <div className="text-green-200 text-[10px]">MIN ETA</div>
+                        <div className="text-white text-xl" style={{ fontWeight: 900 }}>{deliveryQueue.length}</div>
+                        <div className="text-green-200 text-[10px]">ACTIVE TASKS</div>
                       </div>
                       <div className="bg-white/20 rounded-xl p-3 text-center">
-                        <div className="text-white text-xl" style={{ fontWeight: 900 }}>1.2</div>
-                        <div className="text-green-200 text-[10px]">KM AWAY</div>
+                        <div className="text-white text-xl" style={{ fontWeight: 900 }}>{completedCount}</div>
+                        <div className="text-green-200 text-[10px]">COMPLETED</div>
                       </div>
                     </div>
                   </div>
@@ -290,7 +355,7 @@ export default function RiderDashboard() {
                   </div>
                 </div>
                 <div className="h-1.5" style={{ background: "rgba(0,0,0,0.2)" }}>
-                  <div className="h-full w-1/3 bg-yellow-400 animate-pulse" />
+                  <div className="h-full bg-yellow-400" style={{ width: `${Math.min(100, completionRate)}%` }} />
                 </div>
               </div>
 
@@ -301,42 +366,42 @@ export default function RiderDashboard() {
                     <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "#ECFDF5", color: COLOR, fontWeight: 700 }}>{deliveryQueue.length} queued</span>
                   </div>
                   <div className="space-y-3">
-                    {deliveryQueue.map((d, i) => (
-                      <div key={d.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-green-200 transition-colors">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs shrink-0" style={{ background: d.priority === "high" ? "#DC2626" : COLOR, fontWeight: 800 }}>#{i + 1}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 600 }}>{d.gift}</div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <Store className="w-2.5 h-2.5 text-green-400" />
-                            <span className="text-xs text-green-600" style={{ fontWeight: 600 }}>{d.store}</span>
-                          </div>
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-2.5 h-2.5 text-gray-400" />
-                            <span className="text-xs text-gray-400">{d.address}</span>
+                    {deliveryQueue.length === 0 ? (
+                      <div className="rounded-xl border border-gray-100 p-4 text-sm text-gray-400">No queued tasks from the database.</div>
+                    ) : (
+                      deliveryQueue.map((d, i) => (
+                        <div key={d.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-green-200 transition-colors">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs shrink-0" style={{ background: COLOR, fontWeight: 800 }}>#{i + 1}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 600 }}>{d.gift}</div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Store className="w-2.5 h-2.5 text-green-400" />
+                              <span className="text-xs text-green-600" style={{ fontWeight: 600 }}>{d.store}</span>
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-2.5 h-2.5 text-gray-400" />
+                              <span className="text-xs text-gray-400">{d.address}</span>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-xs" style={{ color: COLOR, fontWeight: 700 }}>{d.distance}</div>
-                          <div className="text-[10px] text-gray-400">~{d.eta}</div>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
 
                 <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                   <div className="mb-4">
-                    <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Weekly Earnings</h3>
-                    <div className="text-2xl mt-1" style={{ color: COLOR, fontWeight: 900 }}>₱4,040</div>
-                    <div className="text-xs text-green-600" style={{ fontWeight: 600 }}>↑ 12% vs last week</div>
+                    <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Weekly Completed Tasks</h3>
+                    <div className="text-2xl mt-1" style={{ color: COLOR, fontWeight: 900 }}>{completedCount}</div>
+                    <div className="text-xs text-green-600" style={{ fontWeight: 600 }}>Data source: driver_tasks</div>
                   </div>
                   <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={earningsData} barSize={20}>
+                    <BarChart data={weeklyCompletedData} barSize={20}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                       <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
                       <YAxis hide />
-                      <Tooltip formatter={(v: number) => [`₱${v}`, "Earned"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                      <Bar dataKey="earned" fill={COLOR} radius={[5, 5, 0, 0]} />
+                      <Tooltip formatter={(v: number) => [v, "Completed"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                      <Bar dataKey="completed" fill={COLOR} radius={[5, 5, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -348,43 +413,77 @@ export default function RiderDashboard() {
             <div className="space-y-4">
               <h2 className="text-gray-900" style={{ fontWeight: 800 }}>Today's Deliveries</h2>
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                <div className="md:hidden p-4 space-y-3">
+                  {todayDeliveries.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-400">
+                      {loading ? "Loading deliveries..." : "No deliveries recorded for today."}
+                    </div>
+                  ) : (
+                    todayDeliveries.map((d) => (
+                      <div key={d.id} className="rounded-xl border border-gray-100 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-xs text-gray-500">{d.id}</span>
+                          {d.status === "delivered" ? (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700" style={{ fontWeight: 700 }}>
+                              Delivered
+                            </span>
+                          ) : (
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700" style={{ fontWeight: 700 }}>
+                              {d.status.replace(/_/g, " ")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 text-sm text-gray-900" style={{ fontWeight: 600 }}>{d.gift}</div>
+                        <div className="text-xs text-green-600 mt-1">{d.store}</div>
+                        <div className="text-xs text-gray-400 mt-1">{d.time}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[600px]">
                     <thead>
                       <tr style={{ background: "#F0FDF8", borderBottom: "1px solid #D1FAE5" }}>
-                        {["Order", "Gift", "Time", "Status", "Amount"].map((h) => (
+                        {["Order", "Gift", "Time", "Status"].map((h) => (
                           <th key={h} className="px-4 py-3 text-left text-[11px] uppercase tracking-wider" style={{ color: COLOR, fontWeight: 700 }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {todayDeliveries.map((d) => (
-                        <tr key={d.id} className="border-t border-gray-50 hover:bg-green-50/30 transition-colors">
-                          <td className="px-4 py-3.5"><span className="font-mono text-xs text-gray-500">{d.id}</span></td>
-                          <td className="px-4 py-3.5">
-                            <div className="text-sm text-gray-900" style={{ fontWeight: 600 }}>{d.gift}</div>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Store className="w-2.5 h-2.5 text-green-400" />
-                              <span className="text-xs text-green-600" style={{ fontWeight: 500 }}>{d.store}</span>
-                            </div>
+                      {todayDeliveries.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-10 text-center text-sm text-gray-400">
+                            {loading ? "Loading deliveries..." : "No deliveries recorded for today."}
                           </td>
-                          <td className="px-4 py-3.5"><span className="text-xs text-gray-400">{d.time}</span></td>
-                          <td className="px-4 py-3.5">
-                            {d.status === "delivered" ? (
-                              <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full" style={{ background: "#ECFDF5" }}>
-                                <CheckCircle2 className="w-3 h-3" style={{ color: COLOR }} />
-                                <span className="text-[11px]" style={{ color: COLOR, fontWeight: 700 }}>Delivered</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full" style={{ background: "#EFF6FF" }}>
-                                <Truck className="w-3 h-3 text-blue-600" />
-                                <span className="text-[11px] text-blue-600" style={{ fontWeight: 700 }}>En Route</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5"><span style={{ color: COLOR, fontWeight: 800 }}>₱{d.amount}</span></td>
                         </tr>
-                      ))}
+                      ) : (
+                        todayDeliveries.map((d) => (
+                          <tr key={d.id} className="border-t border-gray-50 hover:bg-green-50/30 transition-colors">
+                            <td className="px-4 py-3.5"><span className="font-mono text-xs text-gray-500">{d.id}</span></td>
+                            <td className="px-4 py-3.5">
+                              <div className="text-sm text-gray-900" style={{ fontWeight: 600 }}>{d.gift}</div>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <Store className="w-2.5 h-2.5 text-green-400" />
+                                <span className="text-xs text-green-600" style={{ fontWeight: 500 }}>{d.store}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5"><span className="text-xs text-gray-400">{d.time}</span></td>
+                            <td className="px-4 py-3.5">
+                              {d.status === "delivered" ? (
+                                <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full" style={{ background: "#ECFDF5" }}>
+                                  <CheckCircle2 className="w-3 h-3" style={{ color: COLOR }} />
+                                  <span className="text-[11px]" style={{ color: COLOR, fontWeight: 700 }}>Delivered</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full" style={{ background: "#EFF6FF" }}>
+                                  <Truck className="w-3 h-3 text-blue-600" />
+                                  <span className="text-[11px] text-blue-600" style={{ fontWeight: 700 }}>{d.status.replace(/_/g, " ")}</span>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -394,30 +493,27 @@ export default function RiderDashboard() {
 
           {tab === "earnings" && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
-                  { label: "Today", value: "₱640", icon: Zap },
-                  { label: "This Week", value: "₱4,040", icon: TrendingUp },
-                  { label: "This Month", value: "₱17,280", icon: Star },
+                  { label: "Today", value: String(todayDeliveries.filter((d) => d.status === "delivered").length) },
+                  { label: "This Week", value: String(completedCount) },
+                  { label: "This Month", value: String(monthlyCompleted) },
                 ].map((s) => (
                   <div key={s.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: "#ECFDF5" }}>
-                      <s.icon className="w-4 h-4" style={{ color: COLOR }} />
-                    </div>
                     <div className="text-2xl" style={{ color: COLOR, fontWeight: 900 }}>{s.value}</div>
                     <div className="text-xs text-gray-500">{s.label}</div>
                   </div>
                 ))}
               </div>
               <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                <h3 className="text-gray-900 mb-4" style={{ fontWeight: 700 }}>Weekly Earnings Breakdown</h3>
+                <h3 className="text-gray-900 mb-4" style={{ fontWeight: 700 }}>Weekly Completed Tasks Breakdown</h3>
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={earningsData} barSize={36}>
+                  <BarChart data={weeklyCompletedData} barSize={36}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                     <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₱${v}`} />
-                    <Tooltip formatter={(v: number) => [`₱${v}`, "Earnings"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
-                    <Bar dataKey="earned" fill={COLOR} radius={[6, 6, 0, 0]} />
+                    <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v: number) => [v, "Completed"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                    <Bar dataKey="completed" fill={COLOR} radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -433,15 +529,15 @@ export default function RiderDashboard() {
                   </div>
                   <div>
                     <div className="text-gray-900" style={{ fontWeight: 800, fontSize: 18 }}>{userName}</div>
-                    <div className="text-gray-500 text-sm">Rider #04 · East Bajac-Bajac</div>
-                    <div className="flex items-center gap-0.5 mt-1">
-                      {[1, 2, 3, 4, 5].map((i) => <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />)}
-                      <span className="text-xs text-gray-400 ml-1">5.0</span>
-                    </div>
+                    <div className="text-gray-500 text-sm">Rider Account</div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[{ l: "Total Deliveries", v: String(todayDeliveries.length) }, { l: "Acceptance Rate", v: "98%" }, { l: "Total Earnings", v: "₱68k" }].map((s) => (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { l: "Total Tasks", v: String(totalCount) },
+                    { l: "Completion Rate", v: `${completionRate}%` },
+                    { l: "Completed", v: String(completedCount) },
+                  ].map((s) => (
                     <div key={s.l} className="rounded-xl p-3 text-center border border-gray-100">
                       <div className="text-lg" style={{ color: COLOR, fontWeight: 800 }}>{s.v}</div>
                       <div className="text-[11px] text-gray-400 mt-0.5">{s.l}</div>

@@ -64,15 +64,15 @@ export default function Delivery() {
       });
 
       navigate("/app/confirmed");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to optimize delivery.");
+    } catch {
+      setError("Unable to optimize delivery right now. Please try again.");
     } finally {
       setConfirming(false);
     }
   };
 
   return (
-    <div style={{ background: "#FAFAFA" }}>
+    <div className="overflow-x-hidden" style={{ background: "#FAFAFA" }}>
       {/* Header */}
       <div className="px-5 pt-4 pb-5 bg-white border-b border-gray-100">
         <div className="flex items-center gap-3 mb-3">
@@ -134,7 +134,7 @@ export default function Delivery() {
           {/* Time slot */}
           <div className="rounded-2xl bg-white border border-gray-100 p-4">
             <label className="text-sm text-gray-700 mb-3 block" style={{ fontWeight: 700 }}>TIME SLOT</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {timeSlots.map((slot) => (
                 <button
                   key={slot.id}

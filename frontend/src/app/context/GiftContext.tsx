@@ -71,8 +71,8 @@ interface GiftContextType {
   isAuthenticated: boolean;
   authRole: AppRole;
   numericUserId: number;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, role: AuthRole) => Promise<{ emailConfirmationRequired: boolean }>;
+  signIn: (email: string, password: string) => Promise<AppRole>;
+  signUp: (email: string, password: string, role: AuthRole) => Promise<{ emailConfirmationRequired: boolean; role: AppRole }>;
   signOut: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   userName: string;
@@ -131,8 +131,8 @@ const GiftContext = createContext<GiftContextType>({
   isAuthenticated: false,
   authRole: "guest",
   numericUserId: 0,
-  signIn: async () => {},
-  signUp: async () => ({ emailConfirmationRequired: false }),
+  signIn: async () => "guest",
+  signUp: async () => ({ emailConfirmationRequired: false, role: "guest" }),
   signOut: async () => {},
   refreshAuth: async () => {},
   userName: "Juan Santos",
@@ -190,17 +190,20 @@ export const GiftProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = useCallback(async (email: string, password: string) => {
     const user = await authSignInWithPassword({ email, password });
+    const role = getRoleFromUser(user);
     setAuthState(readStoredAuthState());
     setUserName(getUserDisplayName(user));
+    return role;
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, role: AuthRole) => {
     const result = await authSignUpWithPassword({ email, password, role });
     setAuthState(readStoredAuthState());
+    const nextRole = getRoleFromUser(result.user);
     if (result.user) {
       setUserName(getUserDisplayName(result.user));
     }
-    return { emailConfirmationRequired: result.emailConfirmationRequired };
+    return { emailConfirmationRequired: result.emailConfirmationRequired, role: nextRole };
   }, []);
 
   const signOut = useCallback(async () => {

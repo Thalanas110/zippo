@@ -450,6 +450,88 @@ class PlatformService:
         self.repo.delete_by_id("marketplace_products", "product_id", product_id)
         return {"product_id": product_id, "status": "deleted"}
 
+    def list_store_owner_orders(self, owner_user_id: int) -> List[Dict[str, Any]]:
+        stores = self._safe_fetch_table(
+            "stores",
+            filters={"owner_user_id": owner_user_id},
+            limit=2000,
+            order_by="store_id",
+        )
+        if not stores:
+            return []
+
+        store_ids = [row.get("store_id") for row in stores if row.get("store_id") is not None]
+        if not store_ids:
+            return []
+
+        store_by_id = {str(row.get("store_id")): row for row in stores if row.get("store_id") is not None}
+        products = self._safe_fetch_table(
+            "marketplace_products",
+            filters={"store_id": store_ids},
+            limit=8000,
+            order_by="product_id",
+        )
+        if not products:
+            return []
+
+        product_by_id = {str(row.get("product_id")): row for row in products if row.get("product_id") is not None}
+        product_ids = list(product_by_id.keys())
+        if not product_ids:
+            return []
+
+        order_items = self._safe_fetch_table(
+            "buyer_order_items",
+            filters={"product_id": product_ids},
+            limit=10000,
+            order_by="created_at",
+        )
+        if not order_items:
+            return []
+
+        order_ids = [row.get("order_id") for row in order_items if row.get("order_id") is not None]
+        if not order_ids:
+            return []
+
+        orders = self._safe_fetch_table(
+            "buyer_orders",
+            filters={"order_id": order_ids},
+            limit=10000,
+            order_by="created_at",
+        )
+        order_by_id = {str(row.get("order_id")): row for row in orders if row.get("order_id") is not None}
+
+        normalized: List[Dict[str, Any]] = []
+        for item in order_items:
+            order_id = item.get("order_id")
+            product_id = item.get("product_id")
+            order = order_by_id.get(str(order_id), {})
+            product = product_by_id.get(str(product_id), {})
+            store_id = product.get("store_id")
+            store = store_by_id.get(str(store_id), {})
+
+            normalized.append(
+                {
+                    "order_item_id": item.get("order_item_id"),
+                    "order_id": order_id,
+                    "product_id": product_id,
+                    "product_name": item.get("name") or product.get("name"),
+                    "quantity": int(item.get("quantity") or 0),
+                    "unit_price": _safe_float(item.get("unit_price"), 0.0),
+                    "line_total": _safe_float(item.get("line_total"), 0.0),
+                    "status": str(order.get("status") or "pending"),
+                    "occasion": order.get("occasion"),
+                    "recipient_type": order.get("recipient_type"),
+                    "buyer_user_id": order.get("buyer_user_id"),
+                    "total_price": _safe_float(order.get("total_price"), 0.0),
+                    "store_id": store_id,
+                    "store_name": store.get("store_name") or "Store",
+                    "created_at": order.get("created_at") or item.get("created_at"),
+                }
+            )
+
+        normalized.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
+        return normalized[:1000]
+
     def list_driver_tasks(self, driver_user_id: int) -> DriverTaskResponse:
         tasks = self.repo.fetch_table(
             table="driver_tasks",

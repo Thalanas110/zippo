@@ -100,7 +100,7 @@ export default function Profile() {
   };
 
   return (
-    <div style={{ background: "#FAFAFA" }}>
+    <div className="overflow-x-hidden" style={{ background: "#FAFAFA" }}>
       <div className="flex flex-col md:flex-row md:items-start">
         <div className="md:w-72 lg:w-80 shrink-0 md:border-r md:border-gray-100 md:min-h-screen bg-white">
           <div className="px-5 pt-6 pb-5 border-b border-gray-100">
@@ -126,7 +126,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5">
               {profileStats.map((stat) => (
                 <div key={stat.label} className="rounded-xl p-3 text-center border border-gray-100 bg-white">
                   <div className="text-lg" style={{ color: BRAND, fontWeight: 800 }}>{stat.value}</div>
@@ -165,7 +165,7 @@ export default function Profile() {
         </div>
 
         <div className="flex-1 px-5 py-5 space-y-5">
-          <div className="hidden md:grid grid-cols-3 gap-3 mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
             {[
               { icon: Gift, label: "Send a Gift", path: "/app/gift", bg: "#FFF1F2", color: BRAND },
               { icon: Package, label: "My Orders", path: "/app/orders", bg: "#EFF6FF", color: "#2563EB" },

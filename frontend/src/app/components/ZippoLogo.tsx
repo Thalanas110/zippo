@@ -1,9 +1,11 @@
 interface ZippoLogoProps {
   size?: "sm" | "md" | "lg";
   light?: boolean;
+  className?: string;
+  compact?: boolean;
 }
 
-export function ZippoLogo({ size = "md", light = false }: ZippoLogoProps) {
+export function ZippoLogo({ size = "md", light = false, className = "", compact = false }: ZippoLogoProps) {
   const scales = {
     sm: { text: "text-xl", sub: "text-[9px]" },
     md: { text: "text-3xl", sub: "text-[11px]" },
@@ -14,8 +16,8 @@ export function ZippoLogo({ size = "md", light = false }: ZippoLogoProps) {
   const subColor = light ? "rgba(255,255,255,0.8)" : "#6B6B6B";
 
   return (
-    <div className="flex flex-col items-start leading-none">
-      <div className="flex items-center gap-1">
+    <div className={`flex flex-col items-start leading-none min-w-0 ${className}`}>
+      <div className="flex items-center gap-1 min-w-0">
         {/* Z icon with wings */}
         <div className="flex items-center" style={{ color }}>
           <svg
@@ -50,9 +52,11 @@ export function ZippoLogo({ size = "md", light = false }: ZippoLogoProps) {
           <path d="m3.3 7 8.7 5 8.7-5M12 22V12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       </div>
-      <span className={`${scales[size].sub} tracking-widest uppercase mt-0.5`} style={{ color: subColor, fontWeight: 500 }}>
-        Zip your pick, We make it quick
-      </span>
+      {!compact && (
+        <span className={`${scales[size].sub} tracking-widest uppercase mt-0.5 max-w-full truncate`} style={{ color: subColor, fontWeight: 500 }}>
+          Zip your pick, We make it quick
+        </span>
+      )}
     </div>
   );
 }

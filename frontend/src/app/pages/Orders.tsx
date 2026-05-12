@@ -65,7 +65,7 @@ export default function Orders() {
   const activeOrder = orders.find((o) => o.status === "active");
 
   return (
-    <div style={{ background: "#FAFAFA" }}>
+    <div className="overflow-x-hidden" style={{ background: "#FAFAFA" }}>
       <div className="px-5 pt-5 pb-4 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-gray-900" style={{ fontWeight: 800, fontSize: 18 }}>My Orders</h2>

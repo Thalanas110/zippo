@@ -21,10 +21,11 @@ From project root:
 
 ```powershell
 Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env
 ```
 
-Then open `backend/.env` and `frontend/.env` and fill in your real values.
+Then open `backend/.env` and fill in your real values.
+
+The frontend uses `VITE_PYTHON_API_BASE_URL` from `docker-compose.yml` by default.
 
 ## 3) Build and run
 
@@ -51,6 +52,22 @@ Expected:
 
 ```powershell
 docker compose down
+```
+
+## Production build (optional)
+
+Build optimized images without the dev servers:
+
+```powershell
+docker build -t zippo-backend ./backend
+docker build --target prod --build-arg VITE_PYTHON_API_BASE_URL=http://localhost:8000 -t zippo-frontend ./frontend
+```
+
+Run them directly:
+
+```powershell
+docker run --env-file backend/.env -p 8000:8000 zippo-backend
+docker run -p 5173:80 zippo-frontend
 ```
 
 ## Common commands

@@ -173,6 +173,10 @@ def build_router(
     def delete_store_product(product_id: int) -> dict:
         return platform_service.delete_store_product(product_id)
 
+    @router.get("/api/store-owner/{owner_user_id}/orders")
+    def list_store_owner_orders(owner_user_id: int) -> list[dict]:
+        return platform_service.list_store_owner_orders(owner_user_id)
+
     @router.get("/api/driver/{driver_user_id}/tasks", response_model=DriverTaskResponse)
     def list_driver_tasks(driver_user_id: int) -> DriverTaskResponse:
         return platform_service.list_driver_tasks(driver_user_id)

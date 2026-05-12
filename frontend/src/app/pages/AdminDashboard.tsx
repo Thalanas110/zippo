@@ -9,7 +9,6 @@ import {
   Tooltip,
 } from "recharts";
 import {
-  ShieldCheck,
   Bell,
   LogOut,
   LayoutDashboard,
@@ -147,6 +146,12 @@ export default function AdminDashboard() {
     }
   }, [authLoading, isAuthenticated]);
 
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && authRole !== "admin") {
+      window.location.href = "/app/home";
+    }
+  }, [authLoading, isAuthenticated, authRole]);
+
   const loadAdminData = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -174,8 +179,8 @@ export default function AdminDashboard() {
       setProducts(productsResponse ?? []);
       setApplications(applicationsResponse ?? []);
       setLastLoadedAt(new Date().toLocaleString());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load admin data.");
+    } catch {
+      setError("Failed to load admin data. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -250,8 +255,8 @@ export default function AdminDashboard() {
       setReportResult(`Report #${response.report_id} marked as ${response.status}.`);
       setReportNote("");
       await loadAdminData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update report.");
+    } catch {
+      setError("Failed to update report. Please try again.");
     } finally {
       setModeratingReport(false);
     }
@@ -271,8 +276,8 @@ export default function AdminDashboard() {
       setApplicationResult(`Application #${response.application_id} marked as ${response.status}.`);
       setApplicationNote("");
       await loadAdminData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update application.");
+    } catch {
+      setError("Failed to update application. Please try again.");
     } finally {
       setModeratingApplication(false);
     }
@@ -286,31 +291,10 @@ export default function AdminDashboard() {
     );
   }
 
-  if (isAuthenticated && authRole !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "#F5F3FF" }}>
-        <div className="max-w-md w-full rounded-2xl border border-purple-100 bg-white p-6 text-center shadow-sm">
-          <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center" style={{ background: "#F5F3FF" }}>
-            <ShieldCheck className="w-6 h-6" style={{ color: COLOR }} />
-          </div>
-          <h2 className="text-gray-900 mb-2" style={{ fontWeight: 800 }}>Admin Access Required</h2>
-          <p className="text-sm text-gray-500 mb-5">
-            This portal is only available to administrator accounts.
-          </p>
-          <button
-            onClick={() => { window.location.href = "/app/home"; }}
-            className="px-4 py-2 rounded-xl text-white text-sm"
-            style={{ background: COLOR, fontWeight: 700 }}
-          >
-            Go to Customer Home
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (isAuthenticated && authRole !== "admin") return null;
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F5F3FF" }}>
+    <div className="min-h-screen flex overflow-x-hidden" style={{ background: "#F5F3FF" }}>
       <aside className="hidden md:flex flex-col w-56 lg:w-60 min-h-screen bg-white border-r border-purple-100 fixed top-0 left-0 z-20 shadow-sm">
         <div className="px-5 py-5 shrink-0" style={{ background: COLOR }}>
           <ZippoLogo size="sm" light />
@@ -352,7 +336,16 @@ export default function AdminDashboard() {
             <button
               onClick={() => { void loadAdminData(); }}
               disabled={loading}
-              className="h-8 px-3 rounded-xl border border-purple-100 text-xs flex items-center gap-1.5 disabled:opacity-50"
+              className="h-8 w-8 sm:hidden rounded-xl border border-purple-100 flex items-center justify-center disabled:opacity-50"
+              style={{ color: COLOR }}
+              aria-label="Refresh data"
+            >
+              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={() => { void loadAdminData(); }}
+              disabled={loading}
+              className="h-8 px-3 rounded-xl border border-purple-100 text-xs hidden sm:flex items-center gap-1.5 disabled:opacity-50"
               style={{ color: COLOR, fontWeight: 700 }}
             >
               <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -381,7 +374,7 @@ export default function AdminDashboard() {
 
           {tab === "overview" && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map((kpi) => (
                   <div key={kpi.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
@@ -495,7 +488,36 @@ export default function AdminDashboard() {
                 <h2 className="text-gray-900" style={{ fontWeight: 800 }}>All Stores</h2>
                 <p className="text-xs text-gray-400">Global seller inventory and status.</p>
               </div>
-              <div className="overflow-x-auto">
+              <div className="md:hidden p-4 space-y-3">
+                {stores.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-gray-400">No stores found.</div>
+                ) : (
+                  stores.map((store) => (
+                    <div key={`${store.store_id}-${store.owner_user_id}`} className="rounded-xl border border-gray-100 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{safeText(store.store_name)}</div>
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full"
+                          style={{
+                            background: store.is_active ? "#ECFDF5" : "#F3F4F6",
+                            color: store.is_active ? "#059669" : "#6B7280",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {store.is_active ? "active" : "inactive"}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500 space-y-1">
+                        <div>Store ID: {safeText(store.store_id, "-")}</div>
+                        <div>Owner: {safeText(store.owner_user_id, "-")}</div>
+                        <div>Barangay: {safeText(store.barangay, "-")}</div>
+                        <div>Products: {numberValue(store.product_count)}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[760px]">
                   <thead>
                     <tr style={{ background: "#F5F3FF", borderBottom: "1px solid #E9D5FF" }}>
@@ -544,7 +566,30 @@ export default function AdminDashboard() {
                 <h2 className="text-gray-900" style={{ fontWeight: 800 }}>User Directory</h2>
                 <p className="text-xs text-gray-400">Profiles synced from marketplace onboarding.</p>
               </div>
-              <div className="overflow-x-auto">
+              <div className="md:hidden p-4 space-y-3">
+                {users.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-gray-400">No users found.</div>
+                ) : (
+                  users.map((user) => (
+                    <div key={`${user.user_id}-${user.email}`} className="rounded-xl border border-gray-100 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{safeText(user.full_name)}</div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700" style={{ fontWeight: 700 }}>
+                          {safeText(user.role, "buyer")}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500 space-y-1">
+                        <div>User ID: {safeText(user.user_id, "-")}</div>
+                        <div>Email: {safeText(user.email)}</div>
+                        <div>Phone: {safeText(user.phone, "-")}</div>
+                        <div>Barangay: {safeText(user.barangay, "-")}</div>
+                        <div>Orders: {numberValue(user.order_count)}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[900px]">
                   <thead>
                     <tr style={{ background: "#F5F3FF", borderBottom: "1px solid #E9D5FF" }}>
@@ -596,7 +641,26 @@ export default function AdminDashboard() {
                 </select>
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
+                <div className="md:hidden p-4 space-y-3">
+                  {filteredProducts.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-400">No products found for this filter.</div>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <div key={`${product.product_id}-${product.source}-${product.name}`} className="rounded-xl border border-gray-100 p-3">
+                        <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{safeText(product.name)}</div>
+                        <div className="mt-2 text-xs text-gray-500 space-y-1">
+                          <div>Product ID: {safeText(product.product_id, "-")}</div>
+                          <div>Category: {safeText(product.category, "-")}</div>
+                          <div>Store: {safeText(product.store_name, "-")}</div>
+                          <div>Price: PHP {numberValue(product.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                          <div>Stock: {numberValue(product.stock)}</div>
+                          <div>Source: {toHuman(safeText(product.source, "unknown"))}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full min-w-[940px]">
                     <thead>
                       <tr style={{ background: "#F5F3FF", borderBottom: "1px solid #E9D5FF" }}>
@@ -638,7 +702,20 @@ export default function AdminDashboard() {
                   <p className="text-xs text-gray-400">Review and resolve reported incidents.</p>
                 </div>
                 <div className="p-5 space-y-4">
-                  <div className="max-h-56 overflow-auto border border-gray-100 rounded-xl">
+                  <div className="md:hidden space-y-2 max-h-56 overflow-auto">
+                    {reports.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-xs text-gray-400 border border-gray-100 rounded-xl">No reports available.</div>
+                    ) : (
+                      reports.slice(0, 50).map((row) => (
+                        <div key={`${safeText(row.report_id, Math.random().toString())}`} className="rounded-xl border border-gray-100 p-3">
+                          <div className="text-xs font-mono text-gray-500">#{safeText(row.report_id, "-")}</div>
+                          <div className="text-xs text-gray-700 mt-1" style={{ fontWeight: 600 }}>{safeText(row.reason, "-")}</div>
+                          <div className="mt-1 text-[11px] text-gray-500">{safeText(row.accused_role, "-")} - {safeText(row.status, "-")}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="hidden md:block max-h-56 overflow-auto border border-gray-100 rounded-xl">
                     <table className="w-full min-w-[520px]">
                       <thead>
                         <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>
@@ -724,7 +801,20 @@ export default function AdminDashboard() {
                   <p className="text-xs text-gray-400">Approve or reject incoming seller applications.</p>
                 </div>
                 <div className="p-5 space-y-4">
-                  <div className="max-h-56 overflow-auto border border-gray-100 rounded-xl">
+                  <div className="md:hidden space-y-2 max-h-56 overflow-auto">
+                    {applications.length === 0 ? (
+                      <div className="px-3 py-6 text-center text-xs text-gray-400 border border-gray-100 rounded-xl">No applications available.</div>
+                    ) : (
+                      applications.slice(0, 50).map((row) => (
+                        <div key={`${safeText(row.application_id, Math.random().toString())}`} className="rounded-xl border border-gray-100 p-3">
+                          <div className="text-xs font-mono text-gray-500">#{safeText(row.application_id, "-")}</div>
+                          <div className="text-xs text-gray-700 mt-1" style={{ fontWeight: 600 }}>{safeText(row.business_name, "-")}</div>
+                          <div className="mt-1 text-[11px] text-gray-500">{safeText(row.full_name, "-")} - {safeText(row.status, "-")}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="hidden md:block max-h-56 overflow-auto border border-gray-100 rounded-xl">
                     <table className="w-full min-w-[560px]">
                       <thead>
                         <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #F3F4F6" }}>

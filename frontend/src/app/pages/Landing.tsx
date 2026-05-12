@@ -80,10 +80,10 @@ export default function Landing() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       {/* NAVBAR */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <ZippoLogo size="sm" />
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
             <a href="#features" className="hover:text-red-700 transition-colors">Features</a>
@@ -94,14 +94,14 @@ export default function Landing() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/login")}
-              className="text-sm px-4 py-2 rounded-lg border transition-colors hover:bg-gray-50"
+              className="text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-lg border transition-colors hover:bg-gray-50"
               style={{ borderColor: BRAND, color: BRAND }}
             >
               Sign In
             </button>
             <button
               onClick={() => navigate("/login")}
-              className="text-sm px-5 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
+              className="text-xs sm:text-sm px-3 sm:px-5 py-2 rounded-lg text-white transition-opacity hover:opacity-90"
               style={{ background: BRAND }}
             >
               Get Started
@@ -112,7 +112,7 @@ export default function Landing() {
 
       {/* HERO */}
       <section className="relative overflow-hidden" style={{ background: "linear-gradient(135deg, #fff 0%, #FFF1F2 100%)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center">
           <div>
             {/* Label */}
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm mb-6" style={{ background: "#FFF1F2", color: BRAND }}>
@@ -120,10 +120,10 @@ export default function Landing() {
               <span style={{ fontWeight: 600 }}>Proudly serving Olongapo City</span>
             </div>
 
-            <h1 className="text-5xl lg:text-6xl mb-6 text-gray-900" style={{ fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.03em" }}>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl mb-6 text-gray-900" style={{ fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.03em" }}>
               THE <span style={{ color: BRAND }}>SMARTEST</span> WAY TO GIFT AND DELIVER.
             </h1>
-            <p className="text-lg text-gray-600 mb-8 max-w-lg" style={{ lineHeight: 1.7 }}>
+            <p className="text-base sm:text-lg text-gray-600 mb-8 max-w-lg" style={{ lineHeight: 1.7 }}>
               From simple surprises to life's big moments — Zippo helps you find the right gift, for the right person, on time. Every time.
             </p>
 
@@ -145,7 +145,7 @@ export default function Landing() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate("/login")}
-                className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-white transition-all hover:opacity-90 hover:shadow-lg"
+                className="w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3.5 rounded-xl text-white transition-all hover:opacity-90 hover:shadow-lg"
                 style={{ background: BRAND, fontSize: "15px", fontWeight: 700 }}
               >
                 Start Gifting Now
@@ -153,7 +153,7 @@ export default function Landing() {
               </button>
               <button
                 onClick={() => navigate("/login")}
-                className="flex items-center gap-2 px-6 py-3.5 rounded-xl transition-all hover:bg-gray-50 border"
+                className="w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3.5 rounded-xl transition-all hover:bg-gray-50 border"
                 style={{ borderColor: "#E5E7EB", color: "#374151", fontSize: "15px" }}
               >
                 <Package className="w-4 h-4" />
@@ -162,7 +162,7 @@ export default function Landing() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mt-10 pt-8 border-t border-gray-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10 pt-8 border-t border-gray-100">
               {stats.map((s) => (
                 <div key={s.label}>
                   <div className="text-2xl" style={{ color: BRAND, fontWeight: 900 }}>{s.value}</div>
@@ -229,14 +229,14 @@ export default function Landing() {
       </section>
 
       {/* AI SYSTEMS SECTION */}
-      <section id="ai" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
+      <section id="ai" className="py-14 sm:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
             <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm mb-4" style={{ background: "#F5F3FF", color: "#7C3AED" }}>
               <Sparkles className="w-3.5 h-3.5" />
               <span style={{ fontWeight: 600 }}>Powered by Artificial Intelligence</span>
             </div>
-            <h2 className="text-4xl text-gray-900 mb-4" style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
+            <h2 className="text-3xl sm:text-4xl text-gray-900 mb-4" style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
               3 Intelligent Systems,{" "}
               <span style={{ color: BRAND }}>One Seamless Experience</span>
             </h2>
@@ -282,10 +282,10 @@ export default function Landing() {
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="py-20" style={{ background: "#FBF8F7" }}>
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-14 sm:py-20" style={{ background: "#FBF8F7" }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-14">
-            <h2 className="text-4xl text-gray-900 mb-4" style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
+            <h2 className="text-3xl sm:text-4xl text-gray-900 mb-4" style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
               How ZIPPO Works
             </h2>
             <p className="text-gray-500">5 simple steps from idea to delivered gift</p>
@@ -320,15 +320,15 @@ export default function Landing() {
       </section>
 
       {/* PERFECT FOR EVERYONE */}
-      <section id="about" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
+      <section id="about" className="py-14 sm:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm mb-6" style={{ background: "#FFF1F2", color: BRAND }}>
                 <Star className="w-3.5 h-3.5" />
                 <span style={{ fontWeight: 600 }}>Perfect for Everyone</span>
               </div>
-              <h2 className="text-4xl text-gray-900 mb-6" style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
+              <h2 className="text-3xl sm:text-4xl text-gray-900 mb-6" style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
                 Built for every{" "}
                 <span style={{ color: BRAND }}>person</span> in Olongapo
               </h2>
@@ -336,7 +336,7 @@ export default function Landing() {
                 Whether you're a student surprising a friend, a parent gifting family abroad, a professional sending corporate packages, or a business managing bulk deliveries — ZIPPO handles it all.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 {audiences.map((a) => (
                   <div key={a.label} className="flex items-center gap-3 rounded-xl p-4 border border-gray-100 hover:border-red-100 transition-colors">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#FFF1F2" }}>
@@ -387,8 +387,8 @@ export default function Landing() {
       </section>
 
       {/* LOCAL SECTION */}
-      <section id="local" className="py-20" style={{ background: "#FBF8F7" }}>
-        <div className="max-w-7xl mx-auto px-6">
+      <section id="local" className="py-14 sm:py-20" style={{ background: "#FBF8F7" }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="rounded-3xl overflow-hidden shadow-xl" style={{ height: 380 }}>
               <img src={waterfrontImg} alt="Olongapo City" className="w-full h-full object-cover" />
@@ -398,13 +398,13 @@ export default function Landing() {
                 <MapPin className="w-3.5 h-3.5" />
                 <span style={{ fontWeight: 600 }}>Shop Local. Support Local.</span>
               </div>
-              <h2 className="text-4xl text-gray-900 mb-4" style={{ fontWeight: 900 }}>
+              <h2 className="text-3xl sm:text-4xl text-gray-900 mb-4" style={{ fontWeight: 900 }}>
                 The best of <span style={{ color: BRAND }}>Olongapo City</span>, delivered.
               </h2>
               <p className="text-gray-500 mb-6 leading-relaxed">
                 We feature the best local vendors and products — from Gordon's Market bibingka to Subic Bay pasalubong sets. Every purchase supports a local business.
               </p>
-              <div className="grid grid-cols-2 gap-3 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
                 {[
                   { img: hamperImg, name: "Gordon's Bibingka Box", vendor: "Gordon's Market", price: "₱250" },
                   { img: "https://images.unsplash.com/photo-1693165236987-c1ae0418fa89?w=200", name: "Subic Bay Dried Mango Set", vendor: "SBMA Pasalubong", price: "₱180" },
@@ -431,10 +431,10 @@ export default function Landing() {
       </section>
 
       {/* CTA BANNER */}
-      <section className="py-20" style={{ background: BRAND }}>
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <div className="text-5xl mb-4">🎁</div>
-          <h2 className="text-4xl text-white mb-4" style={{ fontWeight: 900 }}>
+      <section className="py-14 sm:py-20" style={{ background: BRAND }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+          <div className="text-4xl sm:text-5xl mb-4">🎁</div>
+          <h2 className="text-3xl sm:text-4xl text-white mb-4" style={{ fontWeight: 900 }}>
             GIFT SMARTER. DELIVER FASTER.
           </h2>
           <p className="text-red-200 mb-8 text-lg">
@@ -455,7 +455,7 @@ export default function Landing() {
 
       {/* FOOTER */}
       <footer className="py-10 bg-gray-900">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-4 gap-8 mb-10">
             <div className="md:col-span-2">
               <ZippoLogo size="sm" light />

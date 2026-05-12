@@ -16,32 +16,17 @@ import { api } from "@/lib/api";
 
 const COLOR = "#2563EB";
 
-// â”€â”€ Mock data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const salesData = [
-  { day: "Mon", sales: 3200, orders: 12 },
-  { day: "Tue", sales: 4500, orders: 18 },
-  { day: "Wed", sales: 2800, orders: 9  },
-  { day: "Thu", sales: 6100, orders: 24 },
-  { day: "Fri", sales: 5400, orders: 21 },
-  { day: "Sat", sales: 7800, orders: 31 },
-  { day: "Sun", sales: 4900, orders: 19 },
-];
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const recentOrders = [
-  { id: "ZIP-0041", product: "Gordon's Bibingka Box",   customer: "Juan Santos",    status: "pending",   amount: 250, time: "9:45 AM",  occasion: "ðŸŽ‚ Birthday"    },
-  { id: "ZIP-0040", product: "Barrio Fiesta Hamper",     customer: "Maria Cruz",     status: "active",    amount: 499, time: "9:12 AM",  occasion: "ðŸŽ“ Graduation"  },
-  { id: "ZIP-0039", product: "Subic Bay Mango Set",      customer: "Pedro Reyes",    status: "delivered", amount: 180, time: "8:30 AM",  occasion: "ðŸ’ Anniversary" },
-  { id: "ZIP-0038", product: "Gordon's Bibingka Box",    customer: "Ana Garcia",     status: "delivered", amount: 250, time: "8:15 AM",  occasion: "ðŸŽ‚ Birthday"    },
-  { id: "ZIP-0037", product: "Local Bibingka Set",       customer: "Carlo Bautista", status: "delivered", amount: 180, time: "7:55 AM",  occasion: "ðŸ™ Thank You"   },
-];
-
-const products = [
-  { id: 1, name: "Gordon's Bibingka Box",    price: 250, stock: 48, status: "active",    sales: 142, category: "Food"    },
-  { id: 2, name: "Barrio Fiesta Hamper",      price: 499, stock: 12, status: "active",    sales: 89,  category: "Hampers" },
-  { id: 3, name: "Pasalubong Assorted Box",   price: 350, stock: 5,  status: "low_stock", sales: 67,  category: "Food"    },
-  { id: 4, name: "Local Bibingka Set",        price: 180, stock: 0,  status: "out_stock", sales: 203, category: "Food"    },
-  { id: 5, name: "Subic Bay Dried Mango Set", price: 180, stock: 34, status: "active",    sales: 54,  category: "Snacks"  },
-];
+type VendorOrderRow = {
+  id: string;
+  product: string;
+  customer: string;
+  status: "pending" | "active" | "delivered";
+  amount: number;
+  time: string;
+  occasion: string;
+};
 
 const statusCfg = {
   pending:   { label: "Pending",   color: "#D97706", bg: "#FEF3C7", icon: Clock        },
@@ -64,6 +49,29 @@ const storeCategories = [
   { id: "lifestyle", label: "Lifestyle & Home",   emoji: "ðŸª´" },
   { id: "mixed",     label: "Mixed Gifts",        emoji: "ðŸŽ" },
 ];
+
+function parseDayLabel(value: unknown): string | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return null;
+  return WEEK_DAYS[date.getDay() === 0 ? 6 : date.getDay() - 1];
+}
+
+function formatOrderTime(value: unknown): string {
+  if (!value) return "N/A";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
+
+function toVendorOrderStatus(value: unknown): VendorOrderRow["status"] {
+  const raw = String(value ?? "").toLowerCase();
+  if (raw === "delivered") return "delivered";
+  if (raw === "in_transit" || raw === "processing" || raw === "ready_for_pickup" || raw === "paid") {
+    return "active";
+  }
+  return "pending";
+}
 
 type Tab = "overview" | "store" | "orders" | "products" | "analytics" | "settings";
 
@@ -206,7 +214,7 @@ function CreateStoreFlow({ onComplete }: { onComplete: (data: StoreData) => void
             {/* Category */}
             <div className="mb-4">
               <label className="text-xs text-gray-600 mb-2 block" style={{ fontWeight: 700 }}>STORE CATEGORY *</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2">
                 {storeCategories.map((cat) => (
                   <button
                     key={cat.id}
@@ -270,7 +278,7 @@ function CreateStoreFlow({ onComplete }: { onComplete: (data: StoreData) => void
                   className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-blue-400 transition-colors"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-600 mb-1.5 block" style={{ fontWeight: 700 }}>
                     <Phone className="w-3 h-3 inline mr-1" />PHONE
@@ -353,21 +361,29 @@ function CreateStoreFlow({ onComplete }: { onComplete: (data: StoreData) => void
 }
 
 // â”€â”€ "My Store" tab content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function MyStoreTab({ store, onUpdate }: { store: StoreData; onUpdate: (s: StoreData) => void }) {
+function MyStoreTab({
+  store,
+  onUpdate,
+  totalOrders,
+  activeProducts,
+}: {
+  store: StoreData;
+  onUpdate: (s: StoreData) => void;
+  totalOrders: number;
+  activeProducts: number;
+}) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(store);
 
   const storeStats = [
-    { label: "Profile Views",  value: "1,240",  color: COLOR },
-    { label: "Total Orders",   value: "134",    color: "#059669" },
-    { label: "Avg Rating",     value: "4.9 â­", color: "#D97706" },
-    { label: "Active Products",value: "5",      color: "#7C3AED" },
+    { label: "Profile Views",  value: "N/A", color: COLOR },
+    { label: "Total Orders",   value: String(totalOrders), color: "#059669" },
+    { label: "Avg Rating",     value: "N/A", color: "#D97706" },
+    { label: "Active Products",value: String(activeProducts), color: "#7C3AED" },
   ];
 
   const hours = [
-    { day: "Monday â€“ Friday", time: "8:00 AM â€“ 6:00 PM", open: true  },
-    { day: "Saturday",        time: "8:00 AM â€“ 4:00 PM", open: true  },
-    { day: "Sunday",          time: "Closed",             open: false },
+    { day: "Operating Hours", time: "Not configured from database", open: false },
   ];
 
   return (
@@ -405,8 +421,8 @@ function MyStoreTab({ store, onUpdate }: { store: StoreData; onUpdate: (s: Store
 
           {/* Rating row */}
           <div className="flex items-center gap-1 mb-3">
-            {[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />)}
-            <span className="text-xs text-gray-500 ml-1">4.9 Â· 134 reviews</span>
+            {[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5 text-gray-300" />)}
+            <span className="text-xs text-gray-500 ml-1">No rating data from database</span>
           </div>
 
           {store.description && (
@@ -416,7 +432,7 @@ function MyStoreTab({ store, onUpdate }: { store: StoreData; onUpdate: (s: Store
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-4">
         {storeStats.map((s) => (
           <div key={s.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
             <div className="text-2xl" style={{ color: s.color, fontWeight: 900 }}>{s.value}</div>
@@ -493,7 +509,7 @@ function MyStoreTab({ store, onUpdate }: { store: StoreData; onUpdate: (s: Store
                 <Plus className="w-3 h-3" />Add
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[store.categoryEmoji, "ðŸ“¸", "ðŸ“¸"].map((e, i) => (
                 <div key={i} className="aspect-square rounded-xl flex items-center justify-center text-2xl border-2 border-dashed" style={{ borderColor: i === 0 ? "#E5E7EB" : "#E5E7EB", background: i === 0 ? "#EFF6FF" : "#FAFAFA" }}>
                   {i === 0 ? e : <Camera className="w-5 h-5 text-gray-300" />}
@@ -523,26 +539,55 @@ function MyStoreTab({ store, onUpdate }: { store: StoreData; onUpdate: (s: Store
 
 // â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function VendorDashboard() {
-  const { numericUserId, authLoading, isAuthenticated } = useGift();
+  const { numericUserId, authLoading, isAuthenticated, authRole } = useGift();
   const [hasStore, setHasStore] = useState(false);
   const [store, setStore] = useState<StoreData | null>(null);
   const [storeId, setStoreId] = useState<number | string | null>(null);
   const [tab, setTab]     = useState<Tab>("overview");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [displayProducts, setDisplayProducts] = useState(products);
+  const [displayProducts, setDisplayProducts] = useState<Array<{
+    id: number;
+    name: string;
+    price: number;
+    stock: number;
+    status: string;
+    sales: number;
+    category: string;
+  }>>([]);
+  const [recentOrders, setRecentOrders] = useState<VendorOrderRow[]>([]);
+  const [salesData, setSalesData] = useState(WEEK_DAYS.map((day) => ({ day, sales: 0, orders: 0 })));
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (authLoading) return;
+    if (!isAuthenticated) {
       window.location.href = "/login";
+      return;
     }
-  }, [authLoading, isAuthenticated]);
+    if (authRole !== "store_owner") {
+      window.location.href = "/app/home";
+    }
+  }, [authLoading, isAuthenticated, authRole]);
 
   const loadVendorData = useCallback(async () => {
     if (!numericUserId) return;
+    setLoadError("");
     try {
-      const [stores, adminProducts] = await Promise.all([api.getAdminStores(), api.getAdminProducts()]);
+      const [stores, adminProducts, orderRows] = await Promise.all([
+        api.getAdminStores(),
+        api.getAdminProducts(),
+        api.getStoreOwnerOrders(numericUserId),
+      ]);
       const myStore = stores.find((s) => Number(s.owner_user_id) === numericUserId);
-      if (!myStore) return;
+      if (!myStore) {
+        setHasStore(false);
+        setStoreId(null);
+        setStore(null);
+        setDisplayProducts([]);
+        setRecentOrders([]);
+        setSalesData(WEEK_DAYS.map((day) => ({ day, sales: 0, orders: 0 })));
+        return;
+      }
 
       setHasStore(true);
       setStoreId(myStore.store_id ?? null);
@@ -558,24 +603,58 @@ export default function VendorDashboard() {
       });
 
       const mine = adminProducts.filter((row) => String(row.store_id ?? "") === String(myStore.store_id ?? ""));
-      if (mine.length > 0) {
-        setDisplayProducts(
-          mine.map((row, idx) => {
-            const stock = Number(row.stock ?? 0);
-            return {
-              id: Number(row.product_id ?? idx + 1),
-              name: String(row.name ?? "Untitled Product"),
-              price: Number(row.price ?? 0),
-              stock,
-              status: stock === 0 ? "out_stock" : stock < 8 ? "low_stock" : "active",
-              sales: Math.max(1, stock * 2),
-              category: String(row.category ?? "gift"),
-            };
-          }),
-        );
-      }
+      const productSales = new Map<string, number>();
+      (orderRows ?? []).forEach((row) => {
+        const key = String(row.product_id ?? "");
+        if (!key) return;
+        productSales.set(key, (productSales.get(key) ?? 0) + Number(row.quantity ?? 0));
+      });
+      setDisplayProducts(
+        mine.map((row, idx) => {
+          const stock = Number(row.stock ?? 0);
+          return {
+            id: Number(row.product_id ?? idx + 1),
+            name: String(row.name ?? "Untitled Product"),
+            price: Number(row.price ?? 0),
+            stock,
+            status: stock === 0 ? "out_stock" : stock < 8 ? "low_stock" : "active",
+            sales: productSales.get(String(row.product_id ?? "")) ?? 0,
+            category: String(row.category ?? "gift"),
+          };
+        }),
+      );
+
+      const mappedOrders: VendorOrderRow[] = (orderRows ?? []).map((row) => ({
+        id: `ZIP-${String(row.order_id ?? row.order_item_id ?? "0")}`,
+        product: String(row.product_name ?? "Order Item"),
+        customer: `Buyer #${String(row.buyer_user_id ?? "N/A")}`,
+        status: toVendorOrderStatus(row.status),
+        amount: Number(row.line_total ?? row.total_price ?? 0),
+        time: formatOrderTime(row.created_at),
+        occasion: String(row.occasion ?? "General"),
+      }));
+      setRecentOrders(mappedOrders);
+
+      const orderCountsByDay = new Map<string, number>(WEEK_DAYS.map((day) => [day, 0]));
+      const salesByDay = new Map<string, number>(WEEK_DAYS.map((day) => [day, 0]));
+      (orderRows ?? []).forEach((row) => {
+        const day = parseDayLabel(row.created_at);
+        if (!day) return;
+        orderCountsByDay.set(day, (orderCountsByDay.get(day) ?? 0) + 1);
+        salesByDay.set(day, (salesByDay.get(day) ?? 0) + Number(row.line_total ?? row.total_price ?? 0));
+      });
+      setSalesData(
+        WEEK_DAYS.map((day) => ({
+          day,
+          sales: Number((salesByDay.get(day) ?? 0).toFixed(2)),
+          orders: orderCountsByDay.get(day) ?? 0,
+        })),
+      );
     } catch {
-      // Keep fallback data if backend load fails.
+      setLoadError("Failed to load vendor data. Please try again.");
+      setDisplayProducts([]);
+      setRecentOrders([]);
+      setSalesData(WEEK_DAYS.map((day) => ({ day, sales: 0, orders: 0 })));
     }
   }, [numericUserId]);
 
@@ -652,16 +731,40 @@ export default function VendorDashboard() {
   };
 
   const kpis = [
-    { label: "Revenue (Week)",  value: "â‚±24,850", delta: "+18%", color: COLOR,     icon: TrendingUp },
-    { label: "Orders Today",    value: "47",       delta: "+5",   color: "#059669", icon: Package    },
-    { label: "Products Listed", value: String(displayProducts.length || 5), delta: "—", color: "#7C3AED", icon: ShoppingBag },
-    { label: "Avg Rating",      value: "4.9 â­",   delta: "+0.1", color: "#D97706", icon: Star       },
+    {
+      label: "Revenue (Week)",
+      value: `PHP ${salesData.reduce((sum, row) => sum + row.sales, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      delta: "",
+      color: COLOR,
+      icon: TrendingUp,
+    },
+    {
+      label: "Orders (Week)",
+      value: String(salesData.reduce((sum, row) => sum + row.orders, 0)),
+      delta: "",
+      color: "#059669",
+      icon: Package,
+    },
+    {
+      label: "Products Listed",
+      value: String(displayProducts.length),
+      delta: "",
+      color: "#7C3AED",
+      icon: ShoppingBag,
+    },
+    {
+      label: "Avg Rating",
+      value: "N/A",
+      delta: "",
+      color: "#D97706",
+      icon: Star,
+    },
   ];
 
   const storeName = store?.name ?? (hasStore ? "My Store" : "â€”");
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#F0F4FF" }}>
+    <div className="min-h-screen flex overflow-x-hidden" style={{ background: "#F0F4FF" }}>
 
       {/* â”€â”€ Desktop sidebar â”€â”€ */}
       <aside className="hidden md:flex flex-col w-60 min-h-screen bg-white border-r border-blue-100 fixed top-0 left-0 z-20 shadow-sm">
@@ -762,6 +865,12 @@ export default function VendorDashboard() {
           </div>
         </header>
 
+        {loadError && (
+          <div className="px-5 md:px-8 pt-4">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{loadError}</div>
+          </div>
+        )}
+
         {/* â”€â”€ Content area â”€â”€ */}
         {!hasStore ? (
           /* â”€â”€ No store: creation flow â”€â”€ */
@@ -771,20 +880,27 @@ export default function VendorDashboard() {
 
             {/* â”€â”€ MY STORE â”€â”€ */}
             {tab === "store" && store && (
-              <MyStoreTab store={store} onUpdate={handleStoreUpdated} />
+              <MyStoreTab
+                store={store}
+                onUpdate={handleStoreUpdated}
+                totalOrders={recentOrders.length}
+                activeProducts={displayProducts.filter((p) => p.stock > 0).length}
+              />
             )}
 
             {/* â”€â”€ OVERVIEW â”€â”€ */}
             {tab === "overview" && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-4">
                   {kpis.map((kpi) => (
                     <div key={kpi.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${kpi.color}15` }}>
                           <kpi.icon className="w-4 h-4" style={{ color: kpi.color }} />
                         </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#F0FDF4", color: "#059669", fontWeight: 700 }}>{kpi.delta}</span>
+                        {kpi.delta && (
+                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#F0FDF4", color: "#059669", fontWeight: 700 }}>{kpi.delta}</span>
+                        )}
                       </div>
                       <div className="text-2xl" style={{ color: kpi.color, fontWeight: 900 }}>{kpi.value}</div>
                       <div className="text-xs text-gray-500 mt-0.5">{kpi.label}</div>
@@ -798,7 +914,7 @@ export default function VendorDashboard() {
                   <div className="flex-1">
                     <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{store?.name}</div>
                     <div className="text-xs text-blue-500">{store?.category} Â· {store?.location}</div>
-                    <div className="flex">{[1,2,3,4,5].map(i => <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />)}<span className="text-[10px] text-gray-400 ml-1">4.9 Â· 134 reviews</span></div>
+                    <div className="text-[10px] text-gray-400 mt-0.5">No rating data from database</div>
                   </div>
                   <button onClick={() => setTab("store")} className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl" style={{ color: COLOR, fontWeight: 700 }}>
                     Manage Store <ChevronRight className="w-3 h-3" />
@@ -810,19 +926,23 @@ export default function VendorDashboard() {
                     <div className="flex items-center justify-between mb-5">
                       <div>
                         <h3 className="text-gray-900" style={{ fontWeight: 700 }}>Weekly Sales</h3>
-                        <p className="text-xs text-gray-400">Revenue this week</p>
+                        <p className="text-xs text-gray-400">Revenue from store-owner orders</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl" style={{ color: COLOR, fontWeight: 900 }}>â‚±34,700</div>
-                        <div className="text-xs text-green-600" style={{ fontWeight: 600 }}>â†‘ 18% vs last week</div>
+                        <div className="text-xl" style={{ color: COLOR, fontWeight: 900 }}>
+                          PHP {salesData.reduce((sum, row) => sum + row.sales, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </div>
+                        <div className="text-xs text-green-600" style={{ fontWeight: 600 }}>
+                          {salesData.reduce((sum, row) => sum + row.orders, 0)} order items this week
+                        </div>
                       </div>
                     </div>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={salesData} barSize={28}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                         <XAxis dataKey="day" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => `â‚±${(v / 1000).toFixed(0)}k`} />
-                        <Tooltip formatter={(v: number) => [`â‚±${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={(v) => `PHP ${v}`} />
+                        <Tooltip formatter={(v: number) => [`PHP ${v.toLocaleString()}`, "Revenue"]} contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 12 }} />
                         <Bar dataKey="sales" fill={COLOR} radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -834,21 +954,25 @@ export default function VendorDashboard() {
                       <button onClick={() => setTab("orders")} className="text-xs" style={{ color: COLOR }}>View all</button>
                     </div>
                     <div className="space-y-3">
-                      {recentOrders.slice(0, 4).map((order) => {
-                        const cfg = statusCfg[order.status as keyof typeof statusCfg];
-                        return (
-                          <div key={order.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs text-gray-900 truncate" style={{ fontWeight: 600 }}>{order.product}</div>
-                              <div className="text-[10px] text-gray-400">{order.customer} Â· {order.time}</div>
+                      {recentOrders.length === 0 ? (
+                        <div className="text-sm text-gray-400 py-4">No store-owner orders found in the database yet.</div>
+                      ) : (
+                        recentOrders.slice(0, 4).map((order) => {
+                          const cfg = statusCfg[order.status as keyof typeof statusCfg];
+                          return (
+                            <div key={order.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs text-gray-900 truncate" style={{ fontWeight: 600 }}>{order.product}</div>
+                                <div className="text-[10px] text-gray-400">{order.customer} - {order.time}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs" style={{ color: COLOR, fontWeight: 700 }}>PHP {order.amount.toLocaleString()}</div>
+                                <div className="text-[10px] px-1.5 py-0.5 rounded-full text-center mt-0.5" style={{ background: cfg.bg, color: cfg.color, fontWeight: 600 }}>{cfg.label}</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-xs" style={{ color: COLOR, fontWeight: 700 }}>â‚±{order.amount}</div>
-                              <div className="text-[10px] px-1.5 py-0.5 rounded-full text-center mt-0.5" style={{ background: cfg.bg, color: cfg.color, fontWeight: 600 }}>{cfg.label}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
@@ -865,12 +989,12 @@ export default function VendorDashboard() {
                         <div className="flex-1 min-w-0">
                           <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 600 }}>{p.name}</div>
                           <div className="h-1.5 rounded-full bg-gray-100 mt-1">
-                            <div className="h-full rounded-full" style={{ width: `${(p.sales / 203) * 100}%`, background: COLOR }} />
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, p.sales * 10)}%`, background: COLOR }} />
                           </div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-sm" style={{ color: COLOR, fontWeight: 800 }}>{p.sales} sold</div>
-                          <div className="text-xs text-gray-400">â‚±{p.price} each</div>
+                          <div className="text-xs text-gray-400">PHP {p.price} each</div>
                         </div>
                       </div>
                     ))}
@@ -887,12 +1011,39 @@ export default function VendorDashboard() {
                     <Search className="w-4 h-4 text-gray-400" />
                     <input className="flex-1 text-sm outline-none bg-transparent text-gray-700" placeholder="Search ordersâ€¦" />
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm" style={{ background: COLOR, fontWeight: 700 }}>
+                  <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm" style={{ background: COLOR, fontWeight: 700 }}>
                     <Plus className="w-4 h-4" />Export
                   </button>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
+                  <div className="md:hidden p-4 space-y-3">
+                    {recentOrders.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-gray-400">
+                        No order rows found in Supabase for this store owner yet.
+                      </div>
+                    ) : (
+                      recentOrders.map((order) => {
+                        const cfg = statusCfg[order.status as keyof typeof statusCfg];
+                        return (
+                          <div key={order.id} className="rounded-xl border border-gray-100 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-xs text-gray-500">{order.id}</span>
+                              <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color, fontWeight: 700 }}>
+                                {cfg.label}
+                              </span>
+                            </div>
+                            <div className="mt-2 text-sm text-gray-900" style={{ fontWeight: 700 }}>{order.product}</div>
+                            <div className="mt-1 text-xs text-gray-500">{order.customer} - {order.occasion}</div>
+                            <div className="mt-1 text-xs text-gray-400">{order.time}</div>
+                            <div className="mt-2 text-sm" style={{ color: COLOR, fontWeight: 800 }}>
+                              PHP {order.amount.toLocaleString()}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[700px]">
                       <thead>
                         <tr style={{ background: "#F8FAFF", borderBottom: "1px solid #E0E7FF" }}>
@@ -902,26 +1053,34 @@ export default function VendorDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {recentOrders.map((order) => {
-                          const cfg = statusCfg[order.status as keyof typeof statusCfg];
-                          const Icon = cfg.icon;
-                          return (
-                            <tr key={order.id} className="border-t border-gray-50 hover:bg-blue-50/30 transition-colors">
-                              <td className="px-4 py-3.5"><span className="font-mono text-xs text-gray-500">{order.id}</span></td>
-                              <td className="px-4 py-3.5"><span className="text-sm text-gray-900" style={{ fontWeight: 600 }}>{order.product}</span></td>
-                              <td className="px-4 py-3.5"><span className="text-sm text-gray-600">{order.customer}</span></td>
-                              <td className="px-4 py-3.5"><span className="text-xs text-gray-500">{order.occasion}</span></td>
-                              <td className="px-4 py-3.5">
-                                <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full" style={{ background: cfg.bg }}>
-                                  <Icon className="w-3 h-3" style={{ color: cfg.color }} />
-                                  <span className="text-[11px]" style={{ color: cfg.color, fontWeight: 700 }}>{cfg.label}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3.5"><span style={{ color: COLOR, fontWeight: 800 }}>â‚±{order.amount}</span></td>
-                              <td className="px-4 py-3.5"><span className="text-xs text-gray-400">{order.time}</span></td>
-                            </tr>
-                          );
-                        })}
+                        {recentOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
+                              No order rows found in Supabase for this store owner yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          recentOrders.map((order) => {
+                            const cfg = statusCfg[order.status as keyof typeof statusCfg];
+                            const Icon = cfg.icon;
+                            return (
+                              <tr key={order.id} className="border-t border-gray-50 hover:bg-blue-50/30 transition-colors">
+                                <td className="px-4 py-3.5"><span className="font-mono text-xs text-gray-500">{order.id}</span></td>
+                                <td className="px-4 py-3.5"><span className="text-sm text-gray-900" style={{ fontWeight: 600 }}>{order.product}</span></td>
+                                <td className="px-4 py-3.5"><span className="text-sm text-gray-600">{order.customer}</span></td>
+                                <td className="px-4 py-3.5"><span className="text-xs text-gray-500">{order.occasion}</span></td>
+                                <td className="px-4 py-3.5">
+                                  <div className="flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full" style={{ background: cfg.bg }}>
+                                    <Icon className="w-3 h-3" style={{ color: cfg.color }} />
+                                    <span className="text-[11px]" style={{ color: cfg.color, fontWeight: 700 }}>{cfg.label}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3.5"><span style={{ color: COLOR, fontWeight: 800 }}>PHP {order.amount.toLocaleString()}</span></td>
+                                <td className="px-4 py-3.5"><span className="text-xs text-gray-400">{order.time}</span></td>
+                              </tr>
+                            );
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -939,7 +1098,45 @@ export default function VendorDashboard() {
                   </button>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
+                  <div className="md:hidden p-4 space-y-3">
+                    {displayProducts.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-gray-400">No products listed yet.</div>
+                    ) : (
+                      displayProducts.map((p) => {
+                        const scfg = productStatusCfg[p.status];
+                        return (
+                          <div key={p.id} className="rounded-xl border border-gray-100 p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{p.name}</div>
+                                <div className="text-xs text-gray-500 mt-1">{p.category}</div>
+                              </div>
+                              <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: scfg.bg, color: scfg.color, fontWeight: 700 }}>
+                                {scfg.label}
+                              </span>
+                            </div>
+                            <div className="mt-2 grid grid-cols-1 min-[360px]:grid-cols-2 gap-2 text-xs text-gray-600">
+                              <div>Price: PHP {p.price}</div>
+                              <div>Stock: {p.stock}</div>
+                              <div>Sales: {p.sales}</div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-3">
+                              <button className="flex-1 h-8 rounded-lg border border-blue-100 text-blue-600 text-xs flex items-center justify-center gap-1">
+                                <Edit className="w-3.5 h-3.5" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(p.id)}
+                                className="flex-1 h-8 rounded-lg border border-red-100 text-red-500 text-xs flex items-center justify-center gap-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[640px]">
                       <thead>
                         <tr style={{ background: "#F8FAFF", borderBottom: "1px solid #E0E7FF" }}>
@@ -960,7 +1157,7 @@ export default function VendorDashboard() {
                                 </div>
                               </td>
                               <td className="px-4 py-4"><span className="text-xs text-gray-500">{p.category}</span></td>
-                              <td className="px-4 py-4"><span style={{ color: COLOR, fontWeight: 800 }}>â‚±{p.price}</span></td>
+                              <td className="px-4 py-4"><span style={{ color: COLOR, fontWeight: 800 }}>PHP {p.price}</span></td>
                               <td className="px-4 py-4">
                                 <span className="text-sm text-gray-700" style={{ fontWeight: 600 }}>{p.stock}</span>
                                 <span className="text-xs text-gray-400 ml-1">units</span>
@@ -968,7 +1165,7 @@ export default function VendorDashboard() {
                               <td className="px-4 py-4">
                                 <div className="flex items-center gap-2">
                                   <div className="h-1.5 w-16 rounded-full bg-gray-100">
-                                    <div className="h-full rounded-full" style={{ width: `${(p.sales / 203) * 100}%`, background: COLOR }} />
+                                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, p.sales * 10)}%`, background: COLOR }} />
                                   </div>
                                   <span className="text-xs text-gray-500">{p.sales}</span>
                                 </div>
@@ -999,12 +1196,30 @@ export default function VendorDashboard() {
             {/* â”€â”€ ANALYTICS â”€â”€ */}
             {tab === "analytics" && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { label: "Total Revenue",   value: "â‚±98,400", color: COLOR      },
-                    { label: "Total Orders",    value: "342",      color: "#059669"  },
-                    { label: "Avg Order Value", value: "â‚±287",     color: "#7C3AED"  },
-                    { label: "Return Rate",     value: "0.8%",     color: "#D97706"  },
+                    {
+                      label: "Total Revenue",
+                      value: `PHP ${salesData.reduce((sum, row) => sum + row.sales, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                      color: COLOR,
+                    },
+                    {
+                      label: "Total Orders",
+                      value: String(recentOrders.length),
+                      color: "#059669",
+                    },
+                    {
+                      label: "Avg Order Value",
+                      value: recentOrders.length > 0
+                        ? `PHP ${(recentOrders.reduce((sum, row) => sum + row.amount, 0) / recentOrders.length).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                        : "N/A",
+                      color: "#7C3AED",
+                    },
+                    {
+                      label: "Return Rate",
+                      value: "N/A",
+                      color: "#D97706",
+                    },
                   ].map((s) => (
                     <div key={s.label} className="bg-white rounded-2xl p-4 border border-gray-100">
                       <div className="text-2xl" style={{ color: s.color, fontWeight: 900 }}>{s.value}</div>

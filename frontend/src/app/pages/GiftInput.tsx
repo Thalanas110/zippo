@@ -96,8 +96,8 @@ export default function GiftInput() {
       const mapped = mergedResults.slice(0, 10).map((row, idx) => rankedProductToUiProduct(row, idx));
       setRecommendations(mapped);
       navigate("/app/recommendations");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch gift recommendations.");
+    } catch {
+      setError("Unable to fetch gift recommendations right now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -112,7 +112,7 @@ export default function GiftInput() {
     value: string;
     onChange: (v: string) => void;
   }) => (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       {items.map((item) => (
         <button
           key={item.id}
@@ -133,7 +133,7 @@ export default function GiftInput() {
   );
 
   return (
-    <div className="min-h-full" style={{ background: "#FAFAFA" }}>
+    <div className="min-h-full overflow-x-hidden" style={{ background: "#FAFAFA" }}>
       <div className="px-5 pt-4 pb-5 bg-white border-b border-gray-100">
         <div className="flex items-center gap-3 mb-4">
           <button onClick={() => navigate("/app/home")} className="w-8 h-8 rounded-xl flex items-center justify-center border border-gray-200">
@@ -189,7 +189,7 @@ export default function GiftInput() {
 
           <div>
             <label className="text-sm text-gray-700 mb-3 block" style={{ fontWeight: 700 }}>DELIVERY TIME SLOT</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {timeSlots.map((slot) => (
                 <button key={slot.id} onClick={() => setTimeSlot(slot.id)} className="flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all"
                   style={{ borderColor: timeSlot === slot.id ? BRAND : "#E5E7EB", background: timeSlot === slot.id ? "#FFF1F2" : "white" }}>

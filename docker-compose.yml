@@ -19,8 +19,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    env_file:
-      - ./frontend/.env
+      target: dev
     environment:
       VITE_PYTHON_API_BASE_URL: http://localhost:8000
     depends_on:

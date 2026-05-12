@@ -75,7 +75,7 @@ export default function Recommendations() {
   };
 
   return (
-    <div style={{ background: "#FAFAFA" }}>
+    <div className="overflow-x-hidden" style={{ background: "#FAFAFA" }}>
       {/* Header */}
       <div className="px-5 pt-4 pb-5 bg-white border-b border-gray-100">
         <div className="flex items-center gap-3 mb-3">

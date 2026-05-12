@@ -93,7 +93,7 @@ export default function Home() {
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
       <div className="px-5 pt-4 pb-5" style={{ background: BRAND }}>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -130,18 +130,18 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <AIBadge module={1} variant="mini" />
           <AIBadge module={2} variant="mini" />
           <AIBadge module={3} variant="mini" />
-          <span className="text-red-200 text-[10px] ml-1">All systems active</span>
+          <span className="text-red-200 text-[10px]">All systems active</span>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start">
         <div className="flex-1 min-w-0">
-          <div className="px-5 py-4">
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 hide-scrollbar">
+          <div className="px-4 sm:px-5 py-4">
+            <div className="flex flex-wrap gap-2">
               {occasions.map((occ) => (
                 <button
                   key={occ.id}
@@ -161,7 +161,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mx-5 mb-4 rounded-2xl p-4 flex items-center gap-3" style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #C0192A 100%)` }}>
+          <div className="mx-4 sm:mx-5 mb-4 rounded-2xl p-4 flex items-center gap-3" style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #C0192A 100%)` }}>
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
@@ -178,14 +178,14 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="px-5 mb-5">
+          <div className="px-4 sm:px-5 mb-5">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-900" style={{ fontWeight: 700 }}>Categories</span>
               <button className="text-xs flex items-center gap-0.5" style={{ color: BRAND }}>
                 All <ChevronRight className="w-3 h-3" />
               </button>
             </div>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {categories.map((cat) => (
                 <button
                   key={cat.label}
@@ -199,9 +199,9 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="px-5 mb-5">
+          <div className="px-4 sm:px-5 mb-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-gray-900" style={{ fontWeight: 700 }}>Top Picks For You</span>
                 <AIBadge module={2} variant="mini" />
               </div>
@@ -227,9 +227,9 @@ export default function Home() {
                       </span>
                     )}
                     <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 700 }}>{product.name}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                       <MapPin className="w-2.5 h-2.5 text-gray-400" />
-                      <span className="text-xs text-gray-400">{product.store} · {product.location}</span>
+                      <span className="text-xs text-gray-400 truncate">{product.store} · {product.location}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm" style={{ color: BRAND, fontWeight: 800 }}>₱{product.price}</span>
@@ -253,7 +253,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mx-5 mb-5 rounded-2xl p-4 flex items-center gap-3 border border-gray-100 bg-white">
+          <div className="mx-4 sm:mx-5 mb-5 rounded-2xl p-4 flex items-center gap-3 border border-gray-100 bg-white">
             <div className="text-2xl">📍</div>
             <div>
               <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>Shop Local. Support Local.</div>

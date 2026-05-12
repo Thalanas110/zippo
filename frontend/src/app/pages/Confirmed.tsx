@@ -99,8 +99,8 @@ export default function Confirmed() {
         if (response.recommendations?.length) {
           setRecommendations(response.recommendations.map((row, idx) => rankedProductToUiProduct(row, idx)));
         }
-      } catch (err) {
-        setOrderError(err instanceof Error ? err.message : "Order placement failed.");
+      } catch {
+        setOrderError("Order placement failed. Please try again.");
       }
     };
 
@@ -108,7 +108,7 @@ export default function Confirmed() {
   }, [addOrderHistoryItem, giftParams.occasion, giftParams.recipient, giftParams.timeSlot, numericUserId, orderDetails, product.id, product.name, product.price, product.store, setOrderDetails, setRecommendations]);
 
   return (
-    <div style={{ background: "#FAFAFA" }}>
+    <div className="overflow-x-hidden" style={{ background: "#FAFAFA" }}>
       <div className="px-5 pt-8 pb-6 text-center bg-white border-b border-gray-100">
         <div className="relative w-20 h-20 mx-auto mb-4">
           <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: "#ECFDF5", border: "3px solid #D1FAE5" }}>
@@ -182,7 +182,7 @@ export default function Confirmed() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button className="py-3.5 rounded-2xl border-2 text-sm flex items-center justify-center gap-1.5 transition-all hover:bg-gray-50" style={{ borderColor: BRAND, color: BRAND, fontWeight: 700 }}>
               <Package className="w-4 h-4" />Track Order
             </button>
