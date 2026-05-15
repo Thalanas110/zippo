@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
             platform_service=platform_service,
             auth_service=auth_service,
             supabase_configured=settings.supabase_data_configured,
+            supabase_auth_configured=settings.supabase_auth_configured,
         )
     )
 

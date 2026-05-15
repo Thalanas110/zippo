@@ -21,6 +21,20 @@ class DeliveryService:
     def __init__(self, repo: ZippoRepository):
         self.repo = repo
 
+    @staticmethod
+    def _normalize_rider(row: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(row)
+        rider_id = normalized.get("id") or normalized.get("rider_id")
+        rider_name = normalized.get("name") or normalized.get("rider_name")
+        if rider_id is not None:
+            normalized["id"] = rider_id
+        if rider_name:
+            normalized["name"] = rider_name
+        if normalized.get("average_rating") in (None, "", 0):
+            normalized["average_rating"] = 4.8
+        normalized["available"] = bool(normalized.get("available", True))
+        return normalized
+
     def optimize(self, req: DeliveryOptimizeRequest) -> Dict[str, Any]:
         order_row = None
         try:
@@ -28,7 +42,7 @@ class DeliveryService:
         except Exception:
             order_row = None
 
-        riders = self.repo.fetch_riders()
+        riders = [self._normalize_rider(row) for row in self.repo.fetch_riders()]
         pickup_lat = (order_row or {}).get("pickup_lat") or req.lat
         pickup_lng = (order_row or {}).get("pickup_lng") or req.lng
         order = {

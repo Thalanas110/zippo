@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { ZippoLogo } from "../components/ZippoLogo";
 import { Eye, EyeOff, ArrowLeft, User, ShoppingBag, Truck, LayoutDashboard } from "lucide-react";
 import { useGift } from "../context/GiftContext";
+import { api } from "@/lib/api";
 
 const BRAND = "#8B1520";
 
@@ -60,12 +61,41 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  const [authUnavailableMessage, setAuthUnavailableMessage] = useState("");
 
   const role = roles.find((r) => r.id === selectedRole)!;
   const isSignUp = mode === "signup";
   const accentColor = isSignUp ? role.color : BRAND;
+  const authDisabled = Boolean(authUnavailableMessage);
+
+  useEffect(() => {
+    let active = true;
+    void api.getHealth()
+      .then((health) => {
+        if (!active) return;
+        if (!health.supabase_auth_configured) {
+          setAuthUnavailableMessage(
+            "Account sign-in and sign-up are unavailable until SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are configured on the backend.",
+          );
+        } else {
+          setAuthUnavailableMessage("");
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthUnavailableMessage("Authentication is temporarily unavailable because the backend health check could not be verified.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogin = async () => {
+    if (authDisabled) {
+      setError(authUnavailableMessage);
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       setError("Email and password are required.");
       return;
@@ -76,14 +106,18 @@ export default function Login() {
     try {
       const signedRole = await signIn(email.trim(), password);
       navigate(roleRoutes[signedRole]);
-    } catch {
-      setError("Sign in failed. Please check your credentials and try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed. Please check your credentials and try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleSignUp = async () => {
+    if (authDisabled) {
+      setError(authUnavailableMessage);
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       setError("Email and password are required to sign up.");
       return;
@@ -107,8 +141,31 @@ export default function Login() {
         return;
       }
       navigate(roleRoutes[result.role]);
-    } catch {
-      setError("Sign up failed. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign up failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (authDisabled) {
+      setError(authUnavailableMessage);
+      return;
+    }
+    if (!email.trim()) {
+      setError("Enter your email address first so we can send a password reset link.");
+      return;
+    }
+
+    setError("");
+    setInfo("");
+    setLoading(true);
+    try {
+      await api.requestPasswordRecovery({ email: email.trim() });
+      setInfo("Password reset email sent. Check your inbox and spam folder.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send password reset email.");
     } finally {
       setLoading(false);
     }
@@ -164,6 +221,12 @@ export default function Login() {
           <p className="text-gray-500 text-sm mb-7">
             {isSignUp ? "Choose your role for account creation" : "Sign in using your existing account role"}
           </p>
+
+          {authUnavailableMessage && (
+            <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", fontWeight: 600 }}>
+              {authUnavailableMessage}
+            </div>
+          )}
 
           {isSignUp && (
             <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 mb-6">
@@ -239,14 +302,22 @@ export default function Login() {
                 <input type="checkbox" className="rounded" />
                 <span className="text-sm text-gray-500">Remember me</span>
               </label>
-              <button className="text-sm hover:opacity-80" style={{ color: accentColor }}>Forgot password?</button>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading || authDisabled}
+                className="text-sm hover:opacity-80 disabled:opacity-50"
+                style={{ color: accentColor }}
+              >
+                Forgot password?
+              </button>
             </div>
 
             <button
               onClick={isSignUp ? handleSignUp : handleLogin}
-              disabled={loading}
+              disabled={loading || authDisabled}
               className="w-full py-3.5 rounded-xl text-white transition-all hover:opacity-90 flex items-center justify-center gap-2"
-              style={{ background: accentColor, fontWeight: 700 }}
+              style={{ background: authDisabled ? "#9CA3AF" : accentColor, fontWeight: 700 }}
             >
               {loading ? (
                 <>
@@ -254,7 +325,7 @@ export default function Login() {
                   {isSignUp ? "Creating account..." : "Signing in..."}
                 </>
               ) : (
-                isSignUp ? `Sign up as ${role.label}` : "Sign in"
+                authDisabled ? "Auth setup required" : isSignUp ? `Sign up as ${role.label}` : "Sign in"
               )}
             </button>
 
