@@ -1,11 +1,13 @@
 import type { BudgetRange, RankedProduct, TimeSlot } from "@/lib/api";
 import type { Product } from "@/app/context/GiftContext";
+import zippoPosterImage from "@/imports/688848913_122097023553303340_3381634510348203818_n.jpg";
+import zippoAppShowcaseImage from "@/imports/690838472_1291988782913450_5046986499448587050_n__1_.png";
 
 const FALLBACK_IMAGES = [
-  "https://images.unsplash.com/photo-1718934628487-f600d3861d0e?w=400&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1693165236987-c1ae0418fa89?w=400&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1773450970959-cef81e9b1053?w=400&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1545844568-98bb15133ec0?w=400&auto=format&fit=crop",
+  zippoPosterImage,
+  zippoAppShowcaseImage,
+  zippoPosterImage,
+  zippoAppShowcaseImage,
 ];
 
 function toScorePercent(score: unknown): number {
@@ -35,9 +37,10 @@ export function rankedProductToUiProduct(row: RankedProduct, index: number): Pro
   const store = String(row.vendor_name ?? row.store_name ?? "Local Store");
   const location = row.local ? "Local store" : "Marketplace";
   const explanation = row.explanation ? String(row.explanation) : "Recommended by ZIPPO AI";
+  const resolvedId = row.id ?? row.source_id ?? row.product_id ?? index + 1;
 
   return {
-    id: typeof row.id === "number" ? row.id : index + 1,
+    id: typeof resolvedId === "number" || typeof resolvedId === "string" ? resolvedId : index + 1,
     name: row.name || "Gift Item",
     store,
     location,
@@ -49,5 +52,8 @@ export function rankedProductToUiProduct(row: RankedProduct, index: number): Pro
       `${toScorePercent(row.score)}% match`,
       explanation,
     ],
+    category: row.category ? String(row.category) : undefined,
+    stock: typeof row.stock === "number" ? row.stock : Number(row.stock ?? 0) || 0,
+    explanation,
   };
 }

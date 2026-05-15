@@ -4,6 +4,8 @@ from fastapi import APIRouter, Header, HTTPException
 
 from zippo_api.models.schemas import (
     AdminDashboardResponse,
+    AuthPasswordRecoveryRequest,
+    AuthPasswordRecoveryResponse,
     AuthSignInRequest,
     AuthSignInResponse,
     AuthSignOutResponse,
@@ -53,6 +55,7 @@ def build_router(
     platform_service: PlatformService,
     auth_service: AuthService,
     supabase_configured: bool,
+    supabase_auth_configured: bool,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -68,7 +71,12 @@ def build_router(
 
     @router.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
-        return HealthResponse(ok=True, service="zippo-fastapi", supabase_configured=supabase_configured)
+        return HealthResponse(
+            ok=True,
+            service="zippo-fastapi",
+            supabase_configured=supabase_configured,
+            supabase_auth_configured=supabase_auth_configured,
+        )
 
     @router.post("/api/auth/signin", response_model=AuthSignInResponse)
     def auth_signin(req: AuthSignInRequest) -> AuthSignInResponse:
@@ -77,6 +85,10 @@ def build_router(
     @router.post("/api/auth/signup", response_model=AuthSignUpResponse)
     def auth_signup(req: AuthSignUpRequest) -> AuthSignUpResponse:
         return AuthSignUpResponse(**auth_service.sign_up(req.email, req.password, req.role))
+
+    @router.post("/api/auth/recover", response_model=AuthPasswordRecoveryResponse)
+    def auth_recover(req: AuthPasswordRecoveryRequest) -> AuthPasswordRecoveryResponse:
+        return AuthPasswordRecoveryResponse(**auth_service.request_password_recovery(req.email))
 
     @router.get("/api/auth/session", response_model=AuthUser)
     def auth_session(authorization: str | None = Header(default=None)) -> AuthUser:
@@ -140,6 +152,10 @@ def build_router(
     @router.post("/api/buyer/orders", response_model=BuyerOrderResponse)
     def create_buyer_order(req: BuyerOrderRequest) -> BuyerOrderResponse:
         return platform_service.create_buyer_order(req)
+
+    @router.get("/api/buyer/{buyer_user_id}/orders")
+    def list_buyer_orders(buyer_user_id: int) -> list[dict]:
+        return platform_service.list_buyer_orders(buyer_user_id)
 
     @router.post("/api/reports/fraud", response_model=FraudReportResponse)
     def submit_fraud_report(req: FraudReportRequest) -> FraudReportResponse:

@@ -28,6 +28,17 @@ type VendorOrderRow = {
   occasion: string;
 };
 
+type VendorProductRow = {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  status: string;
+  sales: number;
+  category: string;
+  source: "seller_catalog" | "legacy_catalog";
+};
+
 const statusCfg = {
   pending:   { label: "Pending",   color: "#D97706", bg: "#FEF3C7", icon: Clock        },
   active:    { label: "En Route",  color: "#2563EB", bg: "#EFF6FF", icon: Package      },
@@ -545,18 +556,12 @@ export default function VendorDashboard() {
   const [storeId, setStoreId] = useState<number | string | null>(null);
   const [tab, setTab]     = useState<Tab>("overview");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [displayProducts, setDisplayProducts] = useState<Array<{
-    id: number;
-    name: string;
-    price: number;
-    stock: number;
-    status: string;
-    sales: number;
-    category: string;
-  }>>([]);
+  const [displayProducts, setDisplayProducts] = useState<VendorProductRow[]>([]);
   const [recentOrders, setRecentOrders] = useState<VendorOrderRow[]>([]);
   const [salesData, setSalesData] = useState(WEEK_DAYS.map((day) => ({ day, sales: 0, orders: 0 })));
   const [loadError, setLoadError] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -620,6 +625,7 @@ export default function VendorDashboard() {
             status: stock === 0 ? "out_stock" : stock < 8 ? "low_stock" : "active",
             sales: productSales.get(String(row.product_id ?? "")) ?? 0,
             category: String(row.category ?? "gift"),
+            source: String(row.source ?? "seller_catalog") === "legacy_catalog" ? "legacy_catalog" : "seller_catalog",
           };
         }),
       );
@@ -701,6 +707,16 @@ export default function VendorDashboard() {
     if (!storeId) return;
     const name = window.prompt("Product name");
     if (!name) return;
+    const priceInput = window.prompt("Price in PHP", "100");
+    if (!priceInput) return;
+    const stockInput = window.prompt("Stock quantity", "10");
+    if (!stockInput) return;
+    const price = Number(priceInput);
+    const stock = Number(stockInput);
+    if (!Number.isFinite(price) || price < 0 || !Number.isFinite(stock) || stock < 0) {
+      setActionMessage("Price and stock must be valid positive numbers.");
+      return;
+    }
     try {
       await api.createStoreProduct({
         owner_user_id: numericUserId || 1,
@@ -708,25 +724,70 @@ export default function VendorDashboard() {
         name,
         description: "",
         category: "gift",
-        price: 100,
-        stock: 10,
+        price,
+        stock,
         occasion_tags: [],
         recipient_tags: [],
         tags: [],
         local_vendor: true,
       });
+      setActionMessage(`Added "${name}" to your marketplace product list.`);
       await loadVendorData();
     } catch {
-      // No-op
+      setActionMessage("Failed to add product. Please try again.");
     }
   };
 
-  const handleDeleteProduct = async (productId: number) => {
+  const handleEditProduct = async (product: VendorProductRow) => {
+    if (product.source === "legacy_catalog") {
+      setActionMessage("Legacy synced products are read-only. Add a new vendor product to test edit actions.");
+      return;
+    }
+    if (!storeId) return;
+    const nextName = window.prompt("Product name", product.name);
+    if (!nextName) return;
+    const nextPriceInput = window.prompt("Price in PHP", String(product.price));
+    if (!nextPriceInput) return;
+    const nextStockInput = window.prompt("Stock quantity", String(product.stock));
+    if (!nextStockInput) return;
+    const nextPrice = Number(nextPriceInput);
+    const nextStock = Number(nextStockInput);
+    if (!Number.isFinite(nextPrice) || nextPrice < 0 || !Number.isFinite(nextStock) || nextStock < 0) {
+      setActionMessage("Price and stock must be valid positive numbers.");
+      return;
+    }
     try {
-      await api.deleteStoreProduct(productId);
+      await api.updateStoreProduct(product.id, {
+        owner_user_id: numericUserId || 1,
+        store_id: Number(storeId),
+        name: nextName,
+        description: "",
+        category: product.category,
+        price: nextPrice,
+        stock: nextStock,
+        occasion_tags: [],
+        recipient_tags: [],
+        tags: [],
+        local_vendor: true,
+      });
+      setActionMessage(`Updated "${nextName}".`);
       await loadVendorData();
     } catch {
-      // No-op
+      setActionMessage("Failed to update product. Please try again.");
+    }
+  };
+
+  const handleDeleteProduct = async (product: VendorProductRow) => {
+    if (product.source === "legacy_catalog") {
+      setActionMessage("Legacy synced products are read-only. Add a new vendor product to test delete actions.");
+      return;
+    }
+    try {
+      await api.deleteStoreProduct(product.id);
+      setActionMessage(`Deleted "${product.name}".`);
+      await loadVendorData();
+    } catch {
+      setActionMessage("Failed to delete product. Please try again.");
     }
   };
 
@@ -760,6 +821,49 @@ export default function VendorDashboard() {
       icon: Star,
     },
   ];
+
+  const filteredRecentOrders = useMemo(() => {
+    const query = orderSearch.trim().toLowerCase();
+    if (!query) return recentOrders;
+    return recentOrders.filter((order) =>
+      order.id.toLowerCase().includes(query)
+      || order.product.toLowerCase().includes(query)
+      || order.customer.toLowerCase().includes(query)
+      || order.occasion.toLowerCase().includes(query),
+    );
+  }, [orderSearch, recentOrders]);
+
+  const handleExportOrders = () => {
+    if (filteredRecentOrders.length === 0) {
+      setActionMessage("There are no visible orders to export.");
+      return;
+    }
+    const rows = [
+      ["Order ID", "Product", "Customer", "Occasion", "Status", "Amount", "Time"],
+      ...filteredRecentOrders.map((order) => [
+        order.id,
+        order.product,
+        order.customer,
+        order.occasion,
+        order.status,
+        String(order.amount),
+        order.time,
+      ]),
+    ];
+    const csv = rows
+      .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(","))
+      .join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "zippo-vendor-orders.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setActionMessage("Exported the current vendor order list.");
+  };
 
   const storeName = store?.name ?? (hasStore ? "My Store" : "â€”");
 
@@ -868,6 +972,13 @@ export default function VendorDashboard() {
         {loadError && (
           <div className="px-5 md:px-8 pt-4">
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{loadError}</div>
+          </div>
+        )}
+        {actionMessage && (
+          <div className="px-5 md:px-8 pt-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm" style={{ color: COLOR }}>
+              {actionMessage}
+            </div>
           </div>
         )}
 
@@ -1009,20 +1120,29 @@ export default function VendorDashboard() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 flex items-center gap-2 bg-white rounded-xl border border-gray-100 px-3 py-2">
                     <Search className="w-4 h-4 text-gray-400" />
-                    <input className="flex-1 text-sm outline-none bg-transparent text-gray-700" placeholder="Search ordersâ€¦" />
+                    <input
+                      value={orderSearch}
+                      onChange={(event) => setOrderSearch(event.target.value)}
+                      className="flex-1 text-sm outline-none bg-transparent text-gray-700"
+                      placeholder="Search orders..."
+                    />
                   </div>
-                  <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm" style={{ background: COLOR, fontWeight: 700 }}>
+                  <button
+                    onClick={handleExportOrders}
+                    className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm"
+                    style={{ background: COLOR, fontWeight: 700 }}
+                  >
                     <Plus className="w-4 h-4" />Export
                   </button>
                 </div>
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                   <div className="md:hidden p-4 space-y-3">
-                    {recentOrders.length === 0 ? (
+                    {filteredRecentOrders.length === 0 ? (
                       <div className="px-4 py-8 text-center text-sm text-gray-400">
-                        No order rows found in Supabase for this store owner yet.
+                        {recentOrders.length === 0 ? "No order rows found in Supabase for this store owner yet." : "No orders match that search."}
                       </div>
                     ) : (
-                      recentOrders.map((order) => {
+                      filteredRecentOrders.map((order) => {
                         const cfg = statusCfg[order.status as keyof typeof statusCfg];
                         return (
                           <div key={order.id} className="rounded-xl border border-gray-100 p-3">
@@ -1053,14 +1173,14 @@ export default function VendorDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {recentOrders.length === 0 ? (
+                        {filteredRecentOrders.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">
-                              No order rows found in Supabase for this store owner yet.
+                              {recentOrders.length === 0 ? "No order rows found in Supabase for this store owner yet." : "No orders match that search."}
                             </td>
                           </tr>
                         ) : (
-                          recentOrders.map((order) => {
+                          filteredRecentOrders.map((order) => {
                             const cfg = statusCfg[order.status as keyof typeof statusCfg];
                             const Icon = cfg.icon;
                             return (
@@ -1121,11 +1241,14 @@ export default function VendorDashboard() {
                               <div>Sales: {p.sales}</div>
                             </div>
                             <div className="flex items-center gap-2 mt-3">
-                              <button className="flex-1 h-8 rounded-lg border border-blue-100 text-blue-600 text-xs flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleEditProduct(p)}
+                                className="flex-1 h-8 rounded-lg border border-blue-100 text-blue-600 text-xs flex items-center justify-center gap-1"
+                              >
                                 <Edit className="w-3.5 h-3.5" /> Edit
                               </button>
                               <button
-                                onClick={() => handleDeleteProduct(p.id)}
+                                onClick={() => handleDeleteProduct(p)}
                                 className="flex-1 h-8 rounded-lg border border-red-100 text-red-500 text-xs flex items-center justify-center gap-1"
                               >
                                 <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -1175,10 +1298,16 @@ export default function VendorDashboard() {
                               </td>
                               <td className="px-4 py-4">
                                 <div className="flex items-center gap-2">
-                                  <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-blue-50 transition-colors">
+                                  <button
+                                    onClick={() => handleEditProduct(p)}
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-blue-50 transition-colors"
+                                  >
                                     <Edit className="w-3.5 h-3.5" style={{ color: COLOR }} />
                                   </button>
-                                  <button onClick={() => handleDeleteProduct(p.id)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
+                                  <button
+                                    onClick={() => handleDeleteProduct(p)}
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
+                                  >
                                     <Trash2 className="w-3.5 h-3.5 text-red-400" />
                                   </button>
                                 </div>
@@ -1276,4 +1405,3 @@ export default function VendorDashboard() {
     </div>
   );
 }
-

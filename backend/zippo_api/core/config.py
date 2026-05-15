@@ -11,6 +11,7 @@ class Settings:
     supabase_url: str
     supabase_service_role_key: str
     supabase_publishable_key: str
+    frontend_app_url: str
     app_name: str = "ZIPPO Intelligent Systems API"
     app_version: str = "2.0.0"
     schema_name: str = "zippo"
@@ -100,5 +101,12 @@ def get_settings() -> Settings:
         supabase_publishable_key=_pick_env_value(
             file_env_values, "SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_ANON_KEY"
         ),
+        frontend_app_url=_pick_env_value(
+            file_env_values,
+            "FRONTEND_APP_URL",
+            "SITE_URL",
+            "VITE_SITE_URL",
+        )
+        or "http://127.0.0.1:5173/login",
         schema_name=schema_name,
     )

@@ -15,7 +15,25 @@ class PublicApiError extends Error {
   }
 }
 
-function getPublicErrorMessage(path: string, status: number): string {
+function parseErrorDetail(rawText: string): string | null {
+  if (!rawText) return null;
+  try {
+    const parsed = JSON.parse(rawText) as {
+      detail?: unknown;
+      message?: unknown;
+      error?: unknown;
+    };
+    const candidate = parsed.detail ?? parsed.message ?? parsed.error;
+    return typeof candidate === "string" && candidate.trim() ? candidate.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function getPublicErrorMessage(path: string, status: number, detail?: string | null): string {
+  if (detail) {
+    return detail;
+  }
   if (path === "/api/auth/signin" && (status === 400 || status === 401)) {
     return "Invalid email or password.";
   }
@@ -69,7 +87,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (!res.ok) {
-    throw new PublicApiError(path, res.status, getPublicErrorMessage(path, res.status));
+    const rawError = await res.text();
+    const detail = parseErrorDetail(rawError);
+    throw new PublicApiError(path, res.status, getPublicErrorMessage(path, res.status, detail));
   }
   if (res.status === 204) {
     return {} as T;
@@ -125,6 +145,10 @@ export interface AuthSignUpRequest {
   role: AuthRole;
 }
 
+export interface AuthPasswordRecoveryRequest {
+  email: string;
+}
+
 export interface AuthSignInResponse {
   user: AuthApiUser;
   session: AuthApiSession;
@@ -136,6 +160,10 @@ export interface AuthSignUpResponse {
   email_confirmation_required: boolean;
 }
 
+export interface AuthPasswordRecoveryResponse {
+  recovery_requested: boolean;
+}
+
 export interface AuthProfileUpdateRequest {
   email?: string;
   password?: string;
@@ -145,11 +173,20 @@ export interface AuthProfileUpdateRequest {
   address_line?: string;
 }
 
+export interface HealthResponse {
+  ok: boolean;
+  service: string;
+  supabase_configured: boolean;
+  supabase_auth_configured: boolean;
+}
+
 export type BudgetRange = "low" | "mid" | "high";
 export type TimeSlot = "Morning" | "PM" | "Eve";
 
 export interface RankedProduct {
   id: number | string;
+  product_id?: number | string;
+  source_id?: number | string;
   name: string;
   category?: string;
   price?: number;
@@ -162,6 +199,10 @@ export interface RankedProduct {
   explanation?: string;
   image_url?: string;
   store_name?: string;
+  tags?: string[];
+  occasion_tags?: string[];
+  recipient_tags?: string[];
+  popularity?: number;
 }
 
 export interface GiftFilterRequest {
@@ -197,6 +238,16 @@ export interface DeliveryOptimizeRequest {
   lng: number;
 }
 
+export interface DeliveryRoutePoint {
+  lat: number;
+  lng: number;
+}
+
+export interface DeliveryRouteStop extends DeliveryRoutePoint {
+  sequence: number;
+  type: "pickup" | "dropoff";
+}
+
 export interface DeliveryOptimizeResponse {
   run_id?: number | string;
   rider_id: number | string;
@@ -207,8 +258,8 @@ export interface DeliveryOptimizeResponse {
   reason?: string;
   method?: string;
   status?: string;
-  stops?: { sequence: number; type: "pickup" | "dropoff"; lat: number; lng: number }[];
-  path?: { lat: number; lng: number }[];
+  stops?: DeliveryRouteStop[];
+  path?: DeliveryRoutePoint[];
 }
 
 export type MarketplaceRole = "guest" | "buyer";
@@ -288,6 +339,25 @@ export interface BuyerOrderResponse {
   delivery_fee: number;
   total_price: number;
   recommendations: RankedProduct[];
+}
+
+export interface BuyerOrderHistoryRow {
+  order_id: number | string;
+  status: string;
+  occasion?: string | null;
+  recipient_type?: string | null;
+  total_price?: number;
+  created_at?: string | null;
+  primary_product_name?: string;
+  item_count?: number;
+  store_id?: number | string | null;
+  store_name?: string;
+  rider_user_id?: number | string | null;
+  rider_name?: string | null;
+  recipient_name?: string | null;
+  delivery_address?: string | null;
+  raw_order_status?: string | null;
+  raw_task_status?: string | null;
 }
 
 export interface StoreOwnerApplicationRequest {
@@ -425,8 +495,11 @@ export interface StoreOwnerApplicationModerationRequest {
 }
 
 export const api = {
+  getHealth: () => get<HealthResponse>("/health"),
   signIn: (b: AuthSignInRequest) => post<AuthSignInResponse>("/api/auth/signin", b),
   signUp: (b: AuthSignUpRequest) => post<AuthSignUpResponse>("/api/auth/signup", b),
+  requestPasswordRecovery: (b: AuthPasswordRecoveryRequest) =>
+    post<AuthPasswordRecoveryResponse>("/api/auth/recover", b),
   getSessionUser: (accessToken: string) =>
     request<AuthApiUser>("/api/auth/session", {
       method: "GET",
@@ -446,6 +519,7 @@ export const api = {
   saveBuyerProfile: (b: BuyerProfileRequest) => post<BuyerProfileResponse>("/api/buyer/profile", b),
   getBuyerProfile: (userId: number) => get<BuyerProfileLookupResponse>(`/api/buyer/profile/${userId}`),
   createBuyerOrder: (b: BuyerOrderRequest) => post<BuyerOrderResponse>("/api/buyer/orders", b),
+  getBuyerOrders: (buyerUserId: number) => get<BuyerOrderHistoryRow[]>(`/api/buyer/${buyerUserId}/orders`),
   applyStoreOwner: (b: StoreOwnerApplicationRequest) =>
     post<{ application_id: number | string; status: string }>("/api/store-owner/apply", b),
   createStore: (b: StorePayload) =>

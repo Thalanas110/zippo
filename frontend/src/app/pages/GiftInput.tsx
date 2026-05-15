@@ -1,6 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, Sparkles, Brain, Lightbulb, Gift, Star } from "lucide-react";
+import {
+  ChevronLeft,
+  Sparkles,
+  Brain,
+  Lightbulb,
+  ClipboardList,
+  Cake,
+  GraduationCap,
+  Heart,
+  TreePine,
+  HandHeart,
+  Baby,
+  HeartPulse,
+  Trophy,
+  Users,
+  Handshake,
+  Briefcase,
+  BookOpen,
+  BadgeCheck,
+  Sunrise,
+  Sun,
+  MoonStar,
+  type LucideIcon,
+} from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import { AIBadge } from "../components/AIBadge";
 import { api } from "@/lib/api";
@@ -8,40 +31,38 @@ import { budgetToRange, rankedProductToUiProduct } from "@/lib/zippo-mappers";
 
 const BRAND = "#8B1520";
 
-const bibingkaImg = "https://images.unsplash.com/photo-1718934628487-f600d3861d0e?w=400&auto=format&fit=crop";
-const hamperImg = "https://images.unsplash.com/photo-1773450970959-cef81e9b1053?w=400&auto=format&fit=crop";
-const giftBoxImg = "https://images.unsplash.com/photo-1545844568-98bb15133ec0?w=400&auto=format&fit=crop";
-
 const occasions = [
-  { id: "Birthday", emoji: "🎂" }, { id: "Graduation", emoji: "🎓" },
-  { id: "Anniversary", emoji: "💍" }, { id: "Christmas", emoji: "🎄" },
-  { id: "Thank You", emoji: "🙏" }, { id: "New Baby", emoji: "👶" },
-  { id: "Get Well", emoji: "💊" }, { id: "Promotion", emoji: "🏆" },
+  { id: "Birthday", icon: Cake },
+  { id: "Graduation", icon: GraduationCap },
+  { id: "Anniversary", icon: Heart },
+  { id: "Christmas", icon: TreePine },
+  { id: "Thank You", icon: HandHeart },
+  { id: "New Baby", icon: Baby },
+  { id: "Get Well", icon: HeartPulse },
+  { id: "Promotion", icon: Trophy },
 ];
 
 const recipients = [
-  { id: "Parent", emoji: "👨‍👩‍👧" }, { id: "Friend", emoji: "🤝" },
-  { id: "Partner", emoji: "❤️" }, { id: "Sibling", emoji: "👫" },
-  { id: "Boss", emoji: "👔" }, { id: "Teacher", emoji: "📚" },
-  { id: "Colleague", emoji: "💼" }, { id: "Client", emoji: "🤝" },
+  { id: "Parent", icon: Users },
+  { id: "Friend", icon: Handshake },
+  { id: "Partner", icon: Heart },
+  { id: "Sibling", icon: Users },
+  { id: "Boss", icon: Briefcase },
+  { id: "Teacher", icon: BookOpen },
+  { id: "Colleague", icon: Briefcase },
+  { id: "Client", icon: BadgeCheck },
 ];
 
 const timeSlots = [
-  { id: "morning" as const, label: "Morning", sub: "8am–12pm", emoji: "🌅" },
-  { id: "afternoon" as const, label: "Afternoon", sub: "12pm–5pm", emoji: "☀️" },
-  { id: "evening" as const, label: "Evening", sub: "5pm–9pm", emoji: "🌙" },
-];
-
-const previewItems = [
-  { img: bibingkaImg, name: "Gordon's Bibingka Box", match: 95, price: 250 },
-  { img: hamperImg, name: "Barrio Fiesta Hamper", match: 81, price: 499 },
-  { img: giftBoxImg, name: "Premium Gift Box", match: 78, price: 699 },
+  { id: "morning" as const, label: "Morning", sub: "8am-12pm", icon: Sunrise },
+  { id: "afternoon" as const, label: "Afternoon", sub: "12pm-5pm", icon: Sun },
+  { id: "evening" as const, label: "Evening", sub: "5pm-9pm", icon: MoonStar },
 ];
 
 const tips = [
-  "Budget ₱300–₱600 hits the sweet spot for most occasions.",
-  "Food gifts have the highest acceptance rate in Olongapo.",
-  "Morning slots have 3x faster delivery fulfillment.",
+  "Start with the real occasion and recipient to improve ranking accuracy.",
+  "A tighter budget gives the marketplace a more precise search window.",
+  "Choose the delivery slot early so rider availability can be matched sooner.",
 ];
 
 export default function GiftInput() {
@@ -108,23 +129,28 @@ export default function GiftInput() {
     value,
     onChange,
   }: {
-    items: { id: string; emoji: string }[];
+    items: { id: string; icon: LucideIcon }[];
     value: string;
-    onChange: (v: string) => void;
+    onChange: (nextValue: string) => void;
   }) => (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       {items.map((item) => (
         <button
           key={item.id}
           onClick={() => onChange(item.id)}
-          className="flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-center"
+          className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center"
           style={{
             borderColor: value === item.id ? BRAND : "#E5E7EB",
             background: value === item.id ? "#FFF1F2" : "white",
           }}
         >
-          <span className="text-xl">{item.emoji}</span>
-          <span className="text-[10px] leading-tight" style={{ color: value === item.id ? BRAND : "#6B7280", fontWeight: value === item.id ? 700 : 500 }}>
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ background: value === item.id ? BRAND : "#F3F4F6" }}
+          >
+            <item.icon className="w-4 h-4" style={{ color: value === item.id ? "white" : "#6B7280" }} />
+          </div>
+          <span className="text-[11px] leading-tight" style={{ color: value === item.id ? BRAND : "#6B7280", fontWeight: value === item.id ? 700 : 500 }}>
             {item.id}
           </span>
         </button>
@@ -141,7 +167,7 @@ export default function GiftInput() {
           </button>
           <div>
             <h2 className="text-gray-900" style={{ fontWeight: 800, fontSize: 17 }}>Find a Gift</h2>
-            <p className="text-xs text-gray-400">Tell us about the occasion and we'll find the perfect gift.</p>
+            <p className="text-xs text-gray-400">Tell us about the occasion and we will search the live catalog for the best match.</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -165,23 +191,32 @@ export default function GiftInput() {
           <div>
             <label className="text-sm text-gray-700 mb-1.5 block" style={{ fontWeight: 700 }}>BUDGET RANGE</label>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-gray-400">₱{minBudget.toLocaleString()}</span>
+              <span className="text-xs text-gray-400">P{minBudget.toLocaleString()}</span>
               <span className="text-lg px-3 py-1 rounded-xl" style={{ color: BRAND, fontWeight: 800, background: "#FFF1F2" }}>
-                ₱{budget.toLocaleString()}
+                P{budget.toLocaleString()}
               </span>
-              <span className="text-xs text-gray-400">₱{maxBudget.toLocaleString()}</span>
+              <span className="text-xs text-gray-400">P{maxBudget.toLocaleString()}</span>
             </div>
             <div className="relative h-6 flex items-center">
               <div className="absolute left-0 right-0 h-1.5 rounded-full" style={{ background: "#E5E7EB" }} />
               <div className="absolute left-0 h-1.5 rounded-full" style={{ background: BRAND, width: `${((budget - minBudget) / (maxBudget - minBudget)) * 100}%` }} />
-              <input type="range" min={minBudget} max={maxBudget} step={50} value={budget} onChange={(e) => setBudget(Number(e.target.value))} className="absolute left-0 right-0 w-full opacity-0 cursor-pointer h-6" />
+              <input type="range" min={minBudget} max={maxBudget} step={50} value={budget} onChange={(event) => setBudget(Number(event.target.value))} className="absolute left-0 right-0 w-full opacity-0 cursor-pointer h-6" />
               <div className="absolute w-5 h-5 rounded-full bg-white border-2 shadow-md pointer-events-none" style={{ borderColor: BRAND, left: `calc(${((budget - minBudget) / (maxBudget - minBudget)) * 100}% - 10px)` }} />
             </div>
             <div className="flex gap-2 mt-3">
-              {[200, 500, 1000, 2000].map((b) => (
-                <button key={b} onClick={() => setBudget(b)} className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
-                  style={{ borderColor: budget === b ? BRAND : "#E5E7EB", background: budget === b ? "#FFF1F2" : "white", color: budget === b ? BRAND : "#6B7280", fontWeight: budget === b ? 700 : 500 }}>
-                  ₱{b >= 1000 ? `${b / 1000}k` : b}
+              {[200, 500, 1000, 2000].map((pricePoint) => (
+                <button
+                  key={pricePoint}
+                  onClick={() => setBudget(pricePoint)}
+                  className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
+                  style={{
+                    borderColor: budget === pricePoint ? BRAND : "#E5E7EB",
+                    background: budget === pricePoint ? "#FFF1F2" : "white",
+                    color: budget === pricePoint ? BRAND : "#6B7280",
+                    fontWeight: budget === pricePoint ? 700 : 500,
+                  }}
+                >
+                  P{pricePoint >= 1000 ? `${pricePoint / 1000}k` : pricePoint}
                 </button>
               ))}
             </div>
@@ -191,9 +226,13 @@ export default function GiftInput() {
             <label className="text-sm text-gray-700 mb-3 block" style={{ fontWeight: 700 }}>DELIVERY TIME SLOT</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {timeSlots.map((slot) => (
-                <button key={slot.id} onClick={() => setTimeSlot(slot.id)} className="flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all"
-                  style={{ borderColor: timeSlot === slot.id ? BRAND : "#E5E7EB", background: timeSlot === slot.id ? "#FFF1F2" : "white" }}>
-                  <span className="text-xl">{slot.emoji}</span>
+                <button
+                  key={slot.id}
+                  onClick={() => setTimeSlot(slot.id)}
+                  className="flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all"
+                  style={{ borderColor: timeSlot === slot.id ? BRAND : "#E5E7EB", background: timeSlot === slot.id ? "#FFF1F2" : "white" }}
+                >
+                  <slot.icon className="w-5 h-5" style={{ color: timeSlot === slot.id ? BRAND : "#6B7280" }} />
                   <span className="text-xs" style={{ color: timeSlot === slot.id ? BRAND : "#374151", fontWeight: 700 }}>{slot.label}</span>
                   <span className="text-[10px] text-gray-400">{slot.sub}</span>
                 </button>
@@ -204,7 +243,7 @@ export default function GiftInput() {
           <div className="rounded-xl p-3 flex items-start gap-2.5" style={{ background: "#EFF6FF", border: "1px solid #DBEAFE" }}>
             <Brain className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
             <p className="text-xs text-blue-700">
-              <span style={{ fontWeight: 700 }}>Module 1 + 2 will run on submit.</span> Gift Intelligence analyzes your inputs, then Personalizer ranks the top matches for {recipient}.
+              <span style={{ fontWeight: 700 }}>Module 1 + 2 will run on submit.</span> Gift Intelligence filters the live catalog first, then Personalizer ranks the strongest matches for {recipient}.
             </p>
           </div>
 
@@ -217,7 +256,7 @@ export default function GiftInput() {
             {loading ? (
               <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>AI Modules Running...</span></>
             ) : (
-              <><Sparkles className="w-5 h-5" />Find Gifts ↗</>
+              <><Sparkles className="w-5 h-5" />Find Gifts -&gt;</>
             )}
           </button>
 
@@ -230,16 +269,16 @@ export default function GiftInput() {
           {loading && (
             <div className="rounded-xl p-4" style={{ background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
               {[
-                { module: 1, label: "Gift Intelligence", desc: `Scanning for ${occasion} · ${recipient} · ₱${budget}`, color: "#2563EB" },
-                { module: 2, label: "Personalizer", desc: "Ranking matches based on recipient profile...", color: "#7C3AED" },
-              ].map((m) => (
-                <div key={m.module} className="flex items-center gap-2.5 mb-2 last:mb-0">
-                  <div className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px]" style={{ background: m.color, fontWeight: 800 }}>{m.module}</div>
+                { module: 1, label: "Gift Intelligence", desc: `Scanning: ${occasion} | ${recipient} | P${budget}`, color: "#2563EB" },
+                { module: 2, label: "Personalizer", desc: "Ranking matches against your recipient profile...", color: "#7C3AED" },
+              ].map((moduleCard) => (
+                <div key={moduleCard.module} className="flex items-center gap-2.5 mb-2 last:mb-0">
+                  <div className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px]" style={{ background: moduleCard.color, fontWeight: 800 }}>{moduleCard.module}</div>
                   <div className="flex-1">
-                    <div className="text-xs" style={{ color: m.color, fontWeight: 700 }}>{m.label}</div>
-                    <div className="text-[10px] text-gray-500">{m.desc}</div>
+                    <div className="text-xs" style={{ color: moduleCard.color, fontWeight: 700 }}>{moduleCard.label}</div>
+                    <div className="text-[10px] text-gray-500">{moduleCard.desc}</div>
                   </div>
-                  <div className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: m.color }} />
+                  <div className="w-4 h-4 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: moduleCard.color }} />
                 </div>
               ))}
             </div>
@@ -249,57 +288,58 @@ export default function GiftInput() {
         <div className="hidden md:flex flex-col gap-5 w-72 lg:w-80 shrink-0 border-l border-gray-100 px-5 py-5 bg-white">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Gift className="w-4 h-4" style={{ color: BRAND }} />
-              <span className="text-xs text-gray-900" style={{ fontWeight: 700 }}>GIFT PREVIEW</span>
+              <ClipboardList className="w-4 h-4" style={{ color: BRAND }} />
+              <span className="text-xs text-gray-900" style={{ fontWeight: 700 }}>REQUEST SNAPSHOT</span>
               <AIBadge module={2} variant="mini" />
             </div>
-            <p className="text-xs text-gray-500">Based on your selections, these might match:</p>
+            <p className="text-xs text-gray-500">These inputs will be sent to the live marketplace search.</p>
           </div>
 
-          <div className="space-y-3">
-            {previewItems.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3 bg-gray-50">
-                <img src={item.img} alt={item.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-900 truncate" style={{ fontWeight: 700 }}>{item.name}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs" style={{ color: BRAND, fontWeight: 800 }}>₱{item.price}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600" style={{ fontWeight: 700 }}>{item.match}%</span>
-                  </div>
-                </div>
-                {i === 0 && <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 shrink-0" />}
+          <div className="rounded-xl p-4 border border-gray-100" style={{ background: "#FAFAFA" }}>
+            {[
+              { label: "Occasion", value: occasion || "-" },
+              { label: "Recipient", value: recipient || "-" },
+              { label: "Budget", value: `P${budget.toLocaleString()}` },
+              { label: "Time Slot", value: timeSlot.charAt(0).toUpperCase() + timeSlot.slice(1) },
+            ].map((row) => (
+              <div key={row.label} className="flex justify-between py-2 border-b border-gray-100 last:border-0">
+                <span className="text-[11px] text-gray-500">{row.label}</span>
+                <span className="text-[11px] text-gray-900" style={{ fontWeight: 600 }}>{row.value}</span>
               </div>
             ))}
           </div>
 
           <div className="rounded-xl p-4" style={{ background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
             <div className="flex items-center gap-2 mb-3">
-              <Lightbulb className="w-4 h-4 text-purple-600" />
-              <span className="text-xs text-purple-700" style={{ fontWeight: 700 }}>AI TIPS</span>
+              <Brain className="w-4 h-4 text-purple-600" />
+              <span className="text-xs text-purple-700" style={{ fontWeight: 700 }}>AI RUNBOOK</span>
             </div>
-            <div className="space-y-2">
-              {tips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <div className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-white mt-0.5" style={{ background: "#7C3AED", fontSize: 9, fontWeight: 800 }}>{i + 1}</div>
-                  <p className="text-[11px] text-purple-700 leading-relaxed">{tip}</p>
+            <div className="space-y-3">
+              {[
+                { title: "Module 1", body: "Filters the live catalog by occasion, recipient, and budget range." },
+                { title: "Module 2", body: "Blends personalized ranking when buyer history is available." },
+              ].map((item) => (
+                <div key={item.title} className="rounded-lg bg-white px-3 py-2 border border-purple-100">
+                  <div className="text-[11px] text-purple-700" style={{ fontWeight: 700 }}>{item.title}</div>
+                  <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">{item.body}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-xl p-4 border border-gray-100" style={{ background: "#FAFAFA" }}>
-            <div className="text-xs text-gray-700 mb-2" style={{ fontWeight: 700 }}>YOUR SELECTIONS</div>
-            {[
-              { label: "Occasion", value: occasion || "—" },
-              { label: "Recipient", value: recipient || "—" },
-              { label: "Budget", value: `₱${budget.toLocaleString()}` },
-              { label: "Time Slot", value: timeSlot.charAt(0).toUpperCase() + timeSlot.slice(1) },
-            ].map((row) => (
-              <div key={row.label} className="flex justify-between py-1 border-b border-gray-100 last:border-0">
-                <span className="text-[11px] text-gray-500">{row.label}</span>
-                <span className="text-[11px] text-gray-900" style={{ fontWeight: 600 }}>{row.value}</span>
-              </div>
-            ))}
+          <div className="rounded-xl p-4" style={{ background: "#FFF7ED", border: "1px solid #FED7AA" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Lightbulb className="w-4 h-4 text-orange-500" />
+              <span className="text-xs text-orange-700" style={{ fontWeight: 700 }}>SEARCH TIPS</span>
+            </div>
+            <div className="space-y-2">
+              {tips.map((tip, index) => (
+                <div key={tip} className="flex items-start gap-2">
+                  <div className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-white mt-0.5" style={{ background: "#F97316", fontSize: 9, fontWeight: 800 }}>{index + 1}</div>
+                  <p className="text-[11px] text-orange-700 leading-relaxed">{tip}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

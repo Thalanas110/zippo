@@ -271,9 +271,10 @@ class PlatformService:
         catalog = self._catalog_items()
         index: Dict[str, Dict[str, Any]] = {}
         for product in catalog:
-            pid = str(product.get("id"))
+            pid = product.get("id") or product.get("product_id")
             source_id = product.get("source_id")
-            index[pid] = product
+            if pid is not None:
+                index[str(pid)] = product
             if source_id is not None:
                 index[str(source_id)] = product
 
@@ -288,7 +289,7 @@ class PlatformService:
             line_total = round(price * quantity, 2)
             line_items.append(
                 {
-                    "product_id": product.get("source_id") or item.product_id,
+                    "product_id": product.get("source_id") or product.get("product_id") or item.product_id,
                     "name": product.get("name"),
                     "quantity": quantity,
                     "unit_price": price,
@@ -346,6 +347,154 @@ class PlatformService:
             total_price=total_price,
             recommendations=[normalize_ranked_product(item) for item in recommendations],
         )
+
+    def list_buyer_orders(self, buyer_user_id: int) -> List[Dict[str, Any]]:
+        orders = self._safe_fetch_table(
+            "buyer_orders",
+            filters={"buyer_user_id": buyer_user_id},
+            limit=1000,
+            order_by="created_at",
+        )
+        if not orders:
+            return []
+
+        order_ids = [row.get("order_id") for row in orders if row.get("order_id") is not None]
+        order_items = self._safe_fetch_table(
+            "buyer_order_items",
+            filters={"order_id": order_ids},
+            limit=5000,
+            order_by="created_at",
+            ascending=True,
+        ) if order_ids else []
+
+        product_ids = [row.get("product_id") for row in order_items if row.get("product_id") is not None]
+        products = self._safe_fetch_table(
+            "marketplace_products",
+            filters={"product_id": product_ids},
+            limit=5000,
+        ) if product_ids else []
+        products_by_id = {
+            str(row.get("product_id")): row for row in products if row.get("product_id") is not None
+        }
+        missing_product_ids = [
+            product_id for product_id in product_ids if str(product_id) not in products_by_id
+        ]
+        if missing_product_ids:
+            legacy_products = self._safe_fetch_table(
+                "products",
+                filters={"product_id": missing_product_ids},
+                limit=5000,
+            )
+            for row in legacy_products:
+                product_id = row.get("product_id")
+                if product_id is None:
+                    continue
+                products_by_id[str(product_id)] = {
+                    "product_id": product_id,
+                    "store_id": None,
+                    "store_name": row.get("vendor_name"),
+                    "vendor_name": row.get("vendor_name"),
+                    "name": row.get("name"),
+                }
+
+        store_ids = [row.get("store_id") for row in products if row.get("store_id") is not None]
+        stores = self._safe_fetch_table(
+            "stores",
+            filters={"store_id": store_ids},
+            limit=2000,
+        ) if store_ids else []
+        stores_by_id = {
+            str(row.get("store_id")): row for row in stores if row.get("store_id") is not None
+        }
+
+        tasks = self._safe_fetch_table(
+            "driver_tasks",
+            filters={"order_id": order_ids},
+            limit=5000,
+            order_by="created_at",
+        ) if order_ids else []
+        latest_task_by_order: Dict[str, Dict[str, Any]] = {}
+        for task in tasks:
+            order_id = task.get("order_id")
+            if order_id is not None:
+                latest_task_by_order[str(order_id)] = task
+
+        driver_ids = [
+            task.get("driver_user_id")
+            for task in latest_task_by_order.values()
+            if task.get("driver_user_id") is not None
+        ]
+        driver_profiles = self._safe_fetch_table(
+            "marketplace_profiles",
+            filters={"user_id": driver_ids},
+            limit=2000,
+        ) if driver_ids else []
+        drivers_by_id = {
+            str(row.get("user_id")): row for row in driver_profiles if row.get("user_id") is not None
+        }
+        missing_driver_ids = [
+            driver_id for driver_id in driver_ids if str(driver_id) not in drivers_by_id
+        ]
+        if missing_driver_ids:
+            legacy_riders = self._safe_fetch_table(
+                "riders",
+                filters={"rider_id": missing_driver_ids},
+                limit=2000,
+            )
+            for row in legacy_riders:
+                rider_id = row.get("rider_id")
+                if rider_id is None:
+                    continue
+                drivers_by_id[str(rider_id)] = {
+                    "user_id": rider_id,
+                    "full_name": row.get("rider_name"),
+                }
+
+        items_by_order: Dict[str, List[Dict[str, Any]]] = {}
+        for item in order_items:
+            order_id = item.get("order_id")
+            if order_id is None:
+                continue
+            items_by_order.setdefault(str(order_id), []).append(item)
+
+        normalized: List[Dict[str, Any]] = []
+        for order in orders:
+            order_id = order.get("order_id")
+            if order_id is None:
+                continue
+
+            order_key = str(order_id)
+            items = items_by_order.get(order_key, [])
+            primary_item = items[0] if items else {}
+            product = products_by_id.get(str(primary_item.get("product_id")), {})
+            store = stores_by_id.get(str(product.get("store_id")), {})
+            task = latest_task_by_order.get(order_key, {})
+            driver = drivers_by_id.get(str(task.get("driver_user_id")), {})
+            delivery = order.get("delivery") if isinstance(order.get("delivery"), dict) else {}
+
+            normalized.append(
+                {
+                    "order_id": order_id,
+                    "status": str(task.get("status") or order.get("status") or "pending"),
+                    "occasion": order.get("occasion"),
+                    "recipient_type": order.get("recipient_type"),
+                    "total_price": _safe_float(order.get("total_price"), 0.0),
+                    "created_at": order.get("created_at"),
+                    "primary_product_name": primary_item.get("name") or product.get("name") or "Gift order",
+                    "item_count": max(len(items), 1 if primary_item else 0),
+                    "store_id": product.get("store_id"),
+                    "store_name": store.get("store_name") or product.get("store_name") or "ZIPPO Marketplace",
+                    "rider_user_id": task.get("driver_user_id"),
+                    "rider_name": driver.get("full_name"),
+                    "recipient_name": delivery.get("recipient_name"),
+                    "delivery_address": delivery.get("address"),
+                    "raw_order_status": order.get("status"),
+                    "raw_task_status": task.get("status"),
+                }
+            )
+
+        normalized.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
+        return normalized
 
     def submit_fraud_report(self, req: FraudReportRequest) -> FraudReportResponse:
         payload = {
@@ -465,17 +614,45 @@ class PlatformService:
             return []
 
         store_by_id = {str(row.get("store_id")): row for row in stores if row.get("store_id") is not None}
+        store_by_name = {
+            str(row.get("store_name") or "").strip(): row
+            for row in stores
+            if str(row.get("store_name") or "").strip()
+        }
+        store_names = set(store_by_name.keys())
         products = self._safe_fetch_table(
             "marketplace_products",
             filters={"store_id": store_ids},
             limit=8000,
             order_by="product_id",
         )
-        if not products:
-            return []
-
         product_by_id = {str(row.get("product_id")): row for row in products if row.get("product_id") is not None}
-        product_ids = list(product_by_id.keys())
+        try:
+            legacy_products = self.repo.fetch_products(limit=8000)
+        except HTTPException as exc:
+            logger.warning("[vendor] legacy products fetch failed: %s", exc.detail)
+            legacy_products = []
+
+        legacy_products = [
+            row for row in legacy_products if str(row.get("vendor_name") or "").strip() in store_names
+        ]
+        legacy_products_by_id = {}
+        for row in legacy_products:
+            raw_product_id = row.get("product_id") or row.get("id")
+            if raw_product_id is None:
+                continue
+            matched_store = store_by_name.get(str(row.get("vendor_name") or "").strip(), {})
+            legacy_products_by_id[str(raw_product_id)] = {
+                "product_id": raw_product_id,
+                "store_id": matched_store.get("store_id"),
+                "store_name": matched_store.get("store_name") or row.get("vendor_name") or "Store",
+                "owner_user_id": matched_store.get("owner_user_id"),
+                "name": row.get("name"),
+                "vendor_name": row.get("vendor_name"),
+                "category": row.get("category"),
+            }
+
+        product_ids = [*product_by_id.keys(), *legacy_products_by_id.keys()]
         if not product_ids:
             return []
 
@@ -505,9 +682,10 @@ class PlatformService:
             order_id = item.get("order_id")
             product_id = item.get("product_id")
             order = order_by_id.get(str(order_id), {})
-            product = product_by_id.get(str(product_id), {})
+            product = product_by_id.get(str(product_id)) or legacy_products_by_id.get(str(product_id), {})
             store_id = product.get("store_id")
             store = store_by_id.get(str(store_id), {})
+            store_name = store.get("store_name") or product.get("store_name") or product.get("vendor_name") or "Store"
 
             normalized.append(
                 {
@@ -524,10 +702,38 @@ class PlatformService:
                     "buyer_user_id": order.get("buyer_user_id"),
                     "total_price": _safe_float(order.get("total_price"), 0.0),
                     "store_id": store_id,
-                    "store_name": store.get("store_name") or "Store",
+                    "store_name": store_name,
                     "created_at": order.get("created_at") or item.get("created_at"),
                 }
             )
+
+        if store_names:
+            if legacy_products_by_id:
+                legacy_orders = self._safe_fetch_orders(limit=10000)
+                for order in legacy_orders:
+                    product = legacy_products_by_id.get(str(order.get("product_id")))
+                    if not product:
+                        continue
+                    store = store_by_name.get(str(product.get("vendor_name") or "").strip(), {})
+                    normalized.append(
+                        {
+                            "order_item_id": None,
+                            "order_id": order.get("order_id"),
+                            "product_id": order.get("product_id"),
+                            "product_name": product.get("name") or "Order Item",
+                            "quantity": 1,
+                            "unit_price": _safe_float(product.get("price"), 0.0),
+                            "line_total": _safe_float(order.get("total_price"), 0.0),
+                            "status": str(order.get("status") or "pending"),
+                            "occasion": order.get("occasion"),
+                            "recipient_type": order.get("recipient_type"),
+                            "buyer_user_id": order.get("user_id"),
+                            "total_price": _safe_float(order.get("total_price"), 0.0),
+                            "store_id": store.get("store_id"),
+                            "store_name": store.get("store_name") or product.get("vendor_name") or "Store",
+                            "created_at": order.get("order_date") or order.get("created_at"),
+                        }
+                    )
 
         normalized.sort(key=lambda row: str(row.get("created_at") or ""), reverse=True)
         return normalized[:1000]
@@ -614,19 +820,31 @@ class PlatformService:
         stores = self._safe_fetch_table("stores", limit=4000, order_by="store_id")
         products = self._safe_fetch_table("marketplace_products", limit=4000)
         store_product_counts = Counter(str(row.get("store_id")) for row in products if row.get("store_id") is not None)
+        legacy_product_counts: Counter[str] = Counter()
+        try:
+            legacy_products = self.repo.fetch_products(limit=5000)
+            legacy_product_counts = Counter(
+                str(row.get("vendor_name") or "").strip()
+                for row in legacy_products
+                if str(row.get("vendor_name") or "").strip()
+            )
+        except HTTPException as exc:
+            logger.warning("[admin] legacy products fetch failed for stores: %s", exc.detail)
 
         normalized: List[Dict[str, Any]] = []
         for row in stores:
             store_id = row.get("store_id")
+            store_name = row.get("store_name", "Unnamed Store")
             normalized.append(
                 {
                     **row,
                     "store_id": store_id,
-                    "store_name": row.get("store_name", "Unnamed Store"),
+                    "store_name": store_name,
                     "owner_user_id": row.get("owner_user_id"),
                     "barangay": row.get("barangay"),
                     "is_active": bool(row.get("is_active", True)),
-                    "product_count": int(store_product_counts.get(str(store_id), 0)),
+                    "product_count": int(store_product_counts.get(str(store_id), 0))
+                    + int(legacy_product_counts.get(str(store_name).strip(), 0)),
                 }
             )
         return normalized
@@ -657,6 +875,11 @@ class PlatformService:
     def list_admin_products(self) -> List[Dict[str, Any]]:
         stores = self._safe_fetch_table("stores", limit=4000)
         store_names = {str(row.get("store_id")): row.get("store_name", "Marketplace Store") for row in stores}
+        stores_by_name = {
+            str(row.get("store_name") or "").strip(): row
+            for row in stores
+            if str(row.get("store_name") or "").strip()
+        }
 
         marketplace_products = self._safe_fetch_table("marketplace_products", limit=5000, order_by="product_id")
         normalized_marketplace: List[Dict[str, Any]] = []
@@ -681,6 +904,7 @@ class PlatformService:
         try:
             base_products = self.repo.fetch_products(limit=5000)
             for row in base_products:
+                matched_store = stores_by_name.get(str(row.get("vendor_name") or "").strip())
                 legacy_products.append(
                     {
                         "product_id": row.get("id") or row.get("product_id"),
@@ -688,10 +912,10 @@ class PlatformService:
                         "category": row.get("category"),
                         "price": _safe_float(row.get("price"), 0.0),
                         "stock": int(row.get("stock") or 0),
-                        "store_id": row.get("vendor_id"),
-                        "store_name": row.get("vendor_name") or "Legacy Catalog",
-                        "owner_user_id": None,
-                        "local_vendor": bool(row.get("local", True)),
+                        "store_id": matched_store.get("store_id") if matched_store else row.get("vendor_id"),
+                        "store_name": matched_store.get("store_name") if matched_store else row.get("vendor_name") or "Legacy Catalog",
+                        "owner_user_id": matched_store.get("owner_user_id") if matched_store else None,
+                        "local_vendor": bool(row.get("local_vendor", row.get("local", True))),
                         "source": "legacy_catalog",
                     }
                 )

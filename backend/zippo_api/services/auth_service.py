@@ -133,7 +133,10 @@ class AuthService:
             payload={
                 "email": email,
                 "password": password,
-                "data": {"role": role},
+                "options": {
+                    "data": {"role": role},
+                    "email_redirect_to": self.settings.frontend_app_url,
+                },
             },
         )
         raw_session = raw.get("session")
@@ -149,6 +152,17 @@ class AuthService:
             "session": session,
             "email_confirmation_required": session is None,
         }
+
+    def request_password_recovery(self, email: str) -> Dict[str, Any]:
+        self._call_auth(
+            method="POST",
+            path="/recover",
+            payload={
+                "email": email,
+                "redirect_to": self.settings.frontend_app_url,
+            },
+        )
+        return {"recovery_requested": True}
 
     def get_user(self, access_token: str) -> Dict[str, Any]:
         raw = self._call_auth(method="GET", path="/user", access_token=access_token)

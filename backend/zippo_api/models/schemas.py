@@ -37,6 +37,7 @@ class HealthResponse(BaseModel):
     ok: bool
     service: str
     supabase_configured: bool
+    supabase_auth_configured: bool
 
 
 class AuthSession(BaseModel):
@@ -65,6 +66,10 @@ class AuthSignUpRequest(BaseModel):
     role: Literal["buyer", "store_owner", "driver", "admin"] = "buyer"
 
 
+class AuthPasswordRecoveryRequest(BaseModel):
+    email: str
+
+
 class AuthSignInResponse(BaseModel):
     user: AuthUser
     session: AuthSession
@@ -78,6 +83,10 @@ class AuthSignUpResponse(BaseModel):
 
 class AuthSignOutResponse(BaseModel):
     signed_out: bool = True
+
+
+class AuthPasswordRecoveryResponse(BaseModel):
+    recovery_requested: bool = True
 
 
 class AuthProfileUpdateRequest(BaseModel):

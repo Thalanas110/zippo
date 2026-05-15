@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { AuthRole } from "@/lib/api";
+import type { AuthRole, DeliveryRoutePoint, DeliveryRouteStop } from "@/lib/api";
 import {
   AUTH_EVENT,
   getNumericUserIdFromAuthUser,
@@ -22,7 +22,7 @@ export interface GiftParams {
 }
 
 export interface Product {
-  id: number;
+  id: number | string;
   name: string;
   store: string;
   location: string;
@@ -31,6 +31,9 @@ export interface Product {
   badge?: string;
   image: string;
   tags: string[];
+  category?: string;
+  stock?: number;
+  explanation?: string;
 }
 
 export interface OrderDetails {
@@ -42,6 +45,10 @@ export interface OrderDetails {
   orderId: string;
   orderDate: string;
   estimatedTime: string;
+  etaMinutes: string;
+  assignmentReason: string;
+  routePath: DeliveryRoutePoint[];
+  routeStops: DeliveryRouteStop[];
 }
 
 export interface OrderHistoryItem {
@@ -97,6 +104,10 @@ const defaultOrderDetails: OrderDetails = {
   orderId: "ZIP-2026-0041",
   orderDate: "May 6, 9:45 AM",
   estimatedTime: "8:00 AM - 12:00 PM",
+  etaMinutes: "25 min",
+  assignmentReason: "Closest available rider for your selected time slot.",
+  routePath: [],
+  routeStops: [],
 };
 
 function readStoredOrders(): OrderHistoryItem[] {

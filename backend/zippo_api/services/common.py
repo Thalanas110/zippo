@@ -14,6 +14,8 @@ def to_text(value: Any) -> Optional[str]:
 
 def normalize_ranked_product(item: Dict[str, Any]) -> Dict[str, Any]:
     out = dict(item)
+    if out.get("id") is None:
+        out["id"] = out.get("product_id") or out.get("source_id")
     if out.get("score") is None and out.get("recommendation_score") is not None:
         out["score"] = out.get("recommendation_score")
     out["explanation"] = to_text(out.get("explanation") or out.get("matched_terms"))
