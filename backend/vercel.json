@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "",
-  "buildCommand": "echo Preparing FastAPI deployment"
+  "installCommand": ""
 }
