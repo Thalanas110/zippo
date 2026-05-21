@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: zippo-backend
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: FRONTEND_APP_URL
+        sync: false
+      - key: SUPABASE_SCHEMA_NAME
+        value: zippo
