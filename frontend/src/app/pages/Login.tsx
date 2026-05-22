@@ -184,9 +184,9 @@ export default function Login() {
           <h1 className="text-2xl text-gray-900 mb-1" style={{ fontWeight: 800 }}>
             {isSignUp ? "Sign Up" : "Sign In"}
           </h1>
-          <p className="text-gray-500 text-sm mb-7">
-            {isSignUp ? "Create your customer account" : "Sign in using your existing account role"}
-          </p>
+          {isSignUp && (
+            <p className="text-gray-500 text-sm mb-7">Create your customer account</p>
+          )}
 
           {authUnavailableMessage && (
             <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", fontWeight: 600 }}>
