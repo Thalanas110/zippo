@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Flame,
   Gift,
+  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
