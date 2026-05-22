@@ -358,13 +358,6 @@ export default function Login() {
             </button>
           </div>
 
-          <div className="mt-6 rounded-xl p-3 text-center" style={{ background: "#FFF1F2" }}>
-            <span className="text-xs" style={{ color: BRAND }}>
-              {isSignUp
-                ? "Role selection applies only to sign up. Sign in uses the role saved in backend."
-                : "Sign in with your backend account credentials."}
-            </span>
-          </div>
         </div>
       </div>
     </div>
