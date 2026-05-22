@@ -58,7 +58,7 @@ export default function Delivery() {
       .catch(() => {
         if (!active) return;
         setPreview(null);
-        setPreviewError("Live route preview is unavailable until rider data is reachable from the backend.");
+        setPreviewError("Route preview is unavailable until rider data is reachable from the backend.");
       })
       .finally(() => {
         if (active) {
@@ -185,7 +185,7 @@ export default function Delivery() {
                   ETA {etaMinutes}
                 </div>
                 <div className="text-[10px] text-gray-400 mt-1">
-                  {previewLoading ? "Refreshing route" : "A* route preview"}
+                  {previewLoading ? "Refreshing preview" : "A* route preview"}
                 </div>
               </div>
             </div>
@@ -315,13 +315,13 @@ export default function Delivery() {
               />
             ) : (
               <div className="h-full flex items-center justify-center px-6 text-center text-sm text-gray-500 bg-slate-50">
-                {previewLoading ? "Loading live A* route preview..." : previewError || "No route preview available yet."}
+                {previewLoading ? "Loading A* route preview..." : previewError || "No route preview available yet."}
               </div>
             )}
             <div className="absolute top-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-2 shadow flex items-center gap-2 z-[500]">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs text-emerald-700" style={{ fontWeight: 700 }}>
-                LIVE TRACKING
+                ROUTE PREVIEW
               </span>
             </div>
             <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-xl px-3 py-2 shadow z-[500]">

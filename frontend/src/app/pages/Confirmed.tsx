@@ -254,7 +254,7 @@ export default function Confirmed() {
             />
             <div className="absolute top-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-2 shadow flex items-center gap-2 z-[500]">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs text-emerald-700" style={{ fontWeight: 700 }}>LIVE TRACKING</span>
+              <span className="text-xs text-emerald-700" style={{ fontWeight: 700 }}>ROUTE PREVIEW</span>
             </div>
           </div>
 
