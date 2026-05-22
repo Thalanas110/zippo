@@ -170,10 +170,6 @@ export default function GiftInput() {
             <p className="text-xs text-gray-400">Tell us about the occasion and we will search the live catalog for the best match.</p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <AIBadge module={1} variant="pill" label="Gift Intelligence" />
-          <AIBadge module={2} variant="pill" label="Personalizer" />
-        </div>
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start md:gap-0">
@@ -307,24 +303,6 @@ export default function GiftInput() {
                 <span className="text-[11px] text-gray-900" style={{ fontWeight: 600 }}>{row.value}</span>
               </div>
             ))}
-          </div>
-
-          <div className="rounded-xl p-4" style={{ background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Brain className="w-4 h-4 text-purple-600" />
-              <span className="text-xs text-purple-700" style={{ fontWeight: 700 }}>AI RUNBOOK</span>
-            </div>
-            <div className="space-y-3">
-              {[
-                { title: "Module 1", body: "Filters the live catalog by occasion, recipient, and budget range." },
-                { title: "Module 2", body: "Blends personalized ranking when buyer history is available." },
-              ].map((item) => (
-                <div key={item.title} className="rounded-lg bg-white px-3 py-2 border border-purple-100">
-                  <div className="text-[11px] text-purple-700" style={{ fontWeight: 700 }}>{item.title}</div>
-                  <p className="text-[11px] text-gray-600 mt-1 leading-relaxed">{item.body}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="rounded-xl p-4" style={{ background: "#FFF7ED", border: "1px solid #FED7AA" }}>

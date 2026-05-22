@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import {
   User, MapPin, Bell, Shield, HelpCircle, LogOut,
   ChevronRight, Star, Package, Heart, Edit2,
-  TrendingUp, Gift, Brain, Sparkles, Route,
+  TrendingUp, Gift,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import { api } from "@/lib/api";
@@ -37,12 +37,6 @@ const menuSections = [
     ],
   },
 ] as const;
-
-const aiInsights = [
-  { icon: Brain, label: "Gift Intelligence", detail: "Learned 8 preferences", color: "#2563EB", bg: "#EFF6FF" },
-  { icon: Sparkles, label: "Personalizer", detail: "95% avg match score", color: "#7C3AED", bg: "#F5F3FF" },
-  { icon: Route, label: "Delivery Opt.", detail: "All deliveries on time", color: "#059669", bg: "#ECFDF5" },
-];
 
 interface ProfileMeta {
   location: string;
@@ -306,25 +300,6 @@ export default function Profile() {
               ))}
             </div>
           </div>
-
-          <div className="px-5 py-4 border-b border-gray-100">
-            <div className="text-xs text-gray-900 mb-3" style={{ fontWeight: 700 }}>AI PERSONALIZATION</div>
-            <div className="space-y-2">
-              {aiInsights.map((m) => (
-                <div key={m.label} className="flex items-center gap-3 rounded-xl p-3 border" style={{ background: m.bg, borderColor: `${m.color}20` }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: m.color }}>
-                    <m.icon className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-xs" style={{ color: m.color, fontWeight: 700 }}>{m.label}</div>
-                    <div className="text-[10px] text-gray-500">{m.detail}</div>
-                  </div>
-                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: m.color }} />
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="px-5 py-4">
             <div className="text-xs text-gray-900 mb-2" style={{ fontWeight: 700 }}>YOUR GIFTING PERSONA</div>
             <div className="flex flex-wrap gap-1.5">
