@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ChevronLeft,
+  Gift,
   Sparkles,
   Lightbulb,
   ClipboardList,
