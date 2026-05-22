@@ -17,6 +17,7 @@ import {
 export interface GiftParams {
   occasion: string;
   recipient: string;
+  giftType: string;
   budget: number;
   timeSlot: "morning" | "afternoon" | "evening";
 }
@@ -91,6 +92,7 @@ const ORDERS_STORAGE_KEY = "zippo.order.history";
 const defaultGiftParams: GiftParams = {
   occasion: "Birthday",
   recipient: "Parent",
+  giftType: "Any",
   budget: 500,
   timeSlot: "morning",
 };

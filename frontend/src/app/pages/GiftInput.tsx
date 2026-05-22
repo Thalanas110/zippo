@@ -21,6 +21,12 @@ import {
   Sunrise,
   Sun,
   MoonStar,
+  Laptop,
+  Shirt,
+  UtensilsCrossed,
+  Gem,
+  Home,
+  Flower2,
   type LucideIcon,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
@@ -51,6 +57,16 @@ const recipients = [
   { id: "Client", icon: BadgeCheck },
 ];
 
+const giftTypes = [
+  { id: "Any", icon: Gift },
+  { id: "Electronics", icon: Laptop },
+  { id: "Food", icon: UtensilsCrossed },
+  { id: "Clothes", icon: Shirt },
+  { id: "Accessories", icon: Gem },
+  { id: "Home", icon: Home },
+  { id: "Flowers", icon: Flower2 },
+];
+
 const timeSlots = [
   { id: "morning" as const, label: "Morning", sub: "8am-12pm", icon: Sunrise },
   { id: "afternoon" as const, label: "Afternoon", sub: "12pm-5pm", icon: Sun },
@@ -69,6 +85,7 @@ export default function GiftInput() {
 
   const [occasion, setOccasion] = useState(giftParams.occasion);
   const [recipient, setRecipient] = useState(giftParams.recipient);
+  const [giftType, setGiftType] = useState(giftParams.giftType);
   const [budget, setBudget] = useState(giftParams.budget);
   const [timeSlot, setTimeSlot] = useState(giftParams.timeSlot);
   const [loading, setLoading] = useState(false);
@@ -77,8 +94,31 @@ export default function GiftInput() {
   const minBudget = 100;
   const maxBudget = 5000;
 
+  const matchesGiftType = (row: { category?: unknown; name?: unknown; description?: unknown; tags?: unknown }, selectedType: string) => {
+    if (selectedType === "Any") return true;
+    const haystack = [
+      String(row.category ?? ""),
+      String(row.name ?? ""),
+      String(row.description ?? ""),
+      ...(Array.isArray(row.tags) ? row.tags.map((tag) => String(tag ?? "")) : []),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const keywordMap: Record<string, string[]> = {
+      electronics: ["electronics", "keyboard", "mouse", "monitor", "router", "ram", "usb", "switch", "power supply", "gaming", "tech", "laptop"],
+      food: ["food", "snack", "hamper", "basket", "coffee", "tea", "chocolate", "treat", "cake", "pastry"],
+      clothes: ["clothes", "shirt", "dress", "apparel", "fashion", "hoodie", "jacket", "pants", "wear"],
+      accessories: ["accessory", "jewelry", "watch", "bag", "wallet", "perfume", "beauty"],
+      home: ["home", "decor", "kitchen", "mug", "candle", "blanket", "organizer"],
+      flowers: ["flower", "bouquet", "floral", "rose", "tulip", "plant"],
+    };
+
+    return (keywordMap[selectedType.toLowerCase()] ?? [selectedType.toLowerCase()]).some((keyword) => haystack.includes(keyword));
+  };
+
   const handleFindGifts = async () => {
-    setGiftParams({ occasion, recipient, budget, timeSlot });
+    setGiftParams({ occasion, recipient, giftType, budget, timeSlot });
     setLoading(true);
     setError("");
     try {
@@ -112,7 +152,14 @@ export default function GiftInput() {
         }
       }
 
-      const mapped = mergedResults.slice(0, 10).map((row, idx) => rankedProductToUiProduct(row, idx));
+      const narrowedResults = mergedResults.filter((row) => matchesGiftType(row, giftType));
+      if (narrowedResults.length === 0) {
+        setRecommendations([]);
+        setError(`No ${giftType.toLowerCase()} gifts matched this request yet. Try another gift type or widen the budget.`);
+        return;
+      }
+
+      const mapped = narrowedResults.slice(0, 10).map((row, idx) => rankedProductToUiProduct(row, idx));
       setRecommendations(mapped);
       navigate("/app/recommendations");
     } catch {
@@ -179,6 +226,11 @@ export default function GiftInput() {
           <div>
             <label className="text-sm text-gray-700 mb-3 block" style={{ fontWeight: 700 }}>RECIPIENT</label>
             <SelectGrid items={recipients} value={recipient} onChange={setRecipient} />
+          </div>
+
+          <div>
+            <label className="text-sm text-gray-700 mb-3 block" style={{ fontWeight: 700 }}>TYPE OF GIFT</label>
+            <SelectGrid items={giftTypes} value={giftType} onChange={setGiftType} />
           </div>
 
           <div>
@@ -284,6 +336,7 @@ export default function GiftInput() {
             {[
               { label: "Occasion", value: occasion || "-" },
               { label: "Recipient", value: recipient || "-" },
+              { label: "Gift Type", value: giftType || "-" },
               { label: "Budget", value: `P${budget.toLocaleString()}` },
               { label: "Time Slot", value: timeSlot.charAt(0).toUpperCase() + timeSlot.slice(1) },
             ].map((row) => (

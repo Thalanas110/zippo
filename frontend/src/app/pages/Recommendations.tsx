@@ -67,6 +67,11 @@ export default function Recommendations() {
           <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
             Recipient: {giftParams.recipient}
           </span>
+          {giftParams.giftType !== "Any" && (
+            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+              Type: {giftParams.giftType}
+            </span>
+          )}
           <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
             Budget: P{giftParams.budget.toLocaleString()}
           </span>
