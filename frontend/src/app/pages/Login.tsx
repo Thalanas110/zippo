@@ -1,46 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { ZippoLogo } from "../components/ZippoLogo";
-import { Eye, EyeOff, ArrowLeft, User, ShoppingBag, Truck, LayoutDashboard } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, User } from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import { api } from "@/lib/api";
 
 const BRAND = "#8B1520";
 
-const roles = [
-  {
-    id: "user",
-    label: "Customer",
-    icon: User,
-    desc: "Browse, gift & order",
-    color: BRAND,
-    bg: "#FFF1F2",
-  },
-  {
-    id: "vendor",
-    label: "Vendor",
-    icon: ShoppingBag,
-    desc: "Manage your store",
-    color: "#2563EB",
-    bg: "#EFF6FF",
-  },
-  {
-    id: "rider",
-    label: "Rider",
-    icon: Truck,
-    desc: "Manage deliveries",
-    color: "#059669",
-    bg: "#ECFDF5",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    icon: LayoutDashboard,
-    desc: "Platform control",
-    color: "#7C3AED",
-    bg: "#F5F3FF",
-  },
-];
+const signupRole = {
+  id: "user",
+  label: "Customer",
+  icon: User,
+  desc: "Browse, gift & order",
+  color: BRAND,
+  bg: "#FFF1F2",
+};
 
 const roleRoutes = {
   buyer: "/app/home",
@@ -54,7 +28,6 @@ export default function Login() {
   const navigate = useNavigate();
   const { signIn, signUp } = useGift();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [selectedRole, setSelectedRole] = useState("user");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -63,7 +36,7 @@ export default function Login() {
   const [info, setInfo] = useState("");
   const [authUnavailableMessage, setAuthUnavailableMessage] = useState("");
 
-  const role = roles.find((r) => r.id === selectedRole)!;
+  const role = signupRole;
   const isSignUp = mode === "signup";
   const accentColor = isSignUp ? role.color : BRAND;
   const authDisabled = Boolean(authUnavailableMessage);
@@ -126,15 +99,8 @@ export default function Login() {
     setInfo("");
     setLoading(true);
 
-    const roleMap = {
-      user: "buyer",
-      vendor: "store_owner",
-      rider: "driver",
-      admin: "admin",
-    } as const;
-
     try {
-      const result = await signUp(email.trim(), password, roleMap[selectedRole as keyof typeof roleMap]);
+      const result = await signUp(email.trim(), password, "buyer");
       if (result.emailConfirmationRequired) {
         setInfo("Sign-up succeeded. Please confirm your email, then sign in.");
         setMode("signin");
@@ -219,7 +185,7 @@ export default function Login() {
             {isSignUp ? "Sign Up" : "Sign In"}
           </h1>
           <p className="text-gray-500 text-sm mb-7">
-            {isSignUp ? "Choose your role for account creation" : "Sign in using your existing account role"}
+            {isSignUp ? "Create your customer account" : "Sign in using your existing account role"}
           </p>
 
           {authUnavailableMessage && (
@@ -229,28 +195,16 @@ export default function Login() {
           )}
 
           {isSignUp && (
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 mb-6">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setSelectedRole(r.id)}
-                  className="flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left"
-                  style={{
-                    borderColor: selectedRole === r.id ? r.color : "#E5E7EB",
-                    background: selectedRole === r.id ? r.bg : "white",
-                  }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: r.color }}>
-                    <r.icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm" style={{ color: selectedRole === r.id ? r.color : "#1A1A1A", fontWeight: 700 }}>
-                      {r.label}
-                    </div>
-                    <div className="text-[11px] text-gray-400">{r.desc}</div>
-                  </div>
-                </button>
-              ))}
+            <div className="mb-6 flex items-center gap-2.5 p-3 rounded-xl border-2 text-left" style={{ borderColor: role.color, background: role.bg }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: role.color }}>
+                <role.icon className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <div className="text-sm" style={{ color: role.color, fontWeight: 700 }}>
+                  {role.label}
+                </div>
+                <div className="text-[11px] text-gray-400">{role.desc}</div>
+              </div>
             </div>
           )}
 
