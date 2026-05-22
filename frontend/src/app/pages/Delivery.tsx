@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ChevronLeft, MapPin, CheckCircle2, Navigation, Route, Zap, Shield } from "lucide-react";
+import { ChevronLeft, MapPin, CheckCircle2, Navigation, Route } from "lucide-react";
 import { useGift } from "../context/GiftContext";
-import { AIBadge } from "../components/AIBadge";
 import { DeliveryRouteMap } from "../components/DeliveryRouteMap";
 import { api, type DeliveryOptimizeResponse } from "@/lib/api";
 import { appSlotToApiSlot } from "@/lib/zippo-mappers";
@@ -148,21 +147,13 @@ export default function Delivery() {
             <h2 className="text-gray-900" style={{ fontWeight: 800, fontSize: 17 }}>
               Delivery Details
             </h2>
-            <p className="text-xs text-gray-400">Module 3 - Rider Assignment</p>
           </div>
         </div>
-        <AIBadge module={3} label="Delivery Optimizer Active" />
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start">
         <div className="flex-1 px-5 py-5 space-y-4">
           <div className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm">
-            <div className="px-4 py-2.5 flex items-center gap-2" style={{ background: "#ECFDF5", borderBottom: "1px solid #D1FAE5" }}>
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-emerald-700" style={{ fontWeight: 700 }}>
-                MODULE 3 - RIDER ASSIGNED
-              </span>
-            </div>
             <div className="p-4 flex items-center gap-3">
               <div className="w-14 h-14 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: BRAND, fontSize: 18, fontWeight: 800 }}>
                 {riderName
@@ -374,24 +365,6 @@ export default function Delivery() {
             </div>
           </div>
 
-          <div className="rounded-2xl p-4" style={{ background: "#ECFDF5", border: "1px solid #D1FAE5" }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Shield className="w-4 h-4 text-emerald-600" />
-              <span className="text-xs text-emerald-700" style={{ fontWeight: 700 }}>
-                A* DELIVERY ROUTING
-              </span>
-            </div>
-            {[
-              "LeafletJS now renders the delivery route canvas",
-              "Route lines are sourced from the backend optimizer response",
-              "Live rider previews still need reachable Supabase rider data",
-            ].map((guarantee) => (
-              <div key={guarantee} className="flex items-center gap-2 mb-1.5 last:mb-0">
-                <Zap className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span className="text-[11px] text-emerald-700">{guarantee}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
