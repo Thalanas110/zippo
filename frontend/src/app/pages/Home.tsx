@@ -108,9 +108,14 @@ export default function Home() {
     [catalogRows],
   );
 
+  const categoryFeedRows = useMemo(() => {
+    const marketplaceRows = catalogRows.filter((row) => row.source_table === "marketplace_products");
+    return marketplaceRows.length > 0 ? marketplaceRows : catalogRows;
+  }, [catalogRows]);
+
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const row of catalogRows) {
+    for (const row of categoryFeedRows) {
       const category = titleCase(row.category);
       counts.set(category, (counts.get(category) ?? 0) + 1);
     }
@@ -118,7 +123,7 @@ export default function Home() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([label]) => label);
-  }, [catalogRows]);
+  }, [categoryFeedRows]);
 
   useEffect(() => {
     if (categories.length === 0) {
@@ -134,7 +139,7 @@ export default function Home() {
       Array<ReturnType<typeof rankedProductToUiProduct> & { category: string }>
     >();
 
-    catalogRows.forEach((row, index) => {
+    categoryFeedRows.forEach((row, index) => {
       const category = titleCase(row.category);
       const product = rankedProductToUiProduct(row, index);
       const current = grouped.get(category) ?? [];
@@ -147,7 +152,7 @@ export default function Home() {
     });
 
     return grouped;
-  }, [catalogRows]);
+  }, [categoryFeedRows]);
 
   const activeCategoryProducts = useMemo(() => {
     if (!activeCategory) return [];

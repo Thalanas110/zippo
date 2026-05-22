@@ -187,6 +187,7 @@ export interface RankedProduct {
   id: number | string;
   product_id?: number | string;
   source_id?: number | string;
+  source_table?: string;
   name: string;
   category?: string;
   price?: number;
