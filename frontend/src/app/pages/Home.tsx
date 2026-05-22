@@ -8,14 +8,9 @@ import {
   ChevronRight,
   Flame,
   Gift,
-  Sparkles,
-  Brain,
-  Route,
   TrendingUp,
-  Zap,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
-import { AIBadge } from "../components/AIBadge";
 import { api, type RankedProduct } from "@/lib/api";
 import { rankedProductToUiProduct } from "@/lib/zippo-mappers";
 
@@ -28,12 +23,6 @@ const OCCASIONS = [
   { id: "anniversary", label: "Anniversary" },
   { id: "christmas", label: "Christmas" },
   { id: "valentines", label: "Valentine's" },
-];
-
-const aiModuleCards = [
-  { num: 1, icon: Brain, label: "Gift Intelligence", desc: "NLP-powered matching", color: "#2563EB", bg: "#EFF6FF" },
-  { num: 2, icon: Sparkles, label: "Personalizer", desc: "ML-ranked just for you", color: "#7C3AED", bg: "#F5F3FF" },
-  { num: 3, icon: Route, label: "Delivery Optimizer", desc: "GPS rider auto-assignment", color: "#059669", bg: "#ECFDF5" },
 ];
 
 function titleCase(value: string | null | undefined): string {
@@ -494,12 +483,9 @@ export default function Home() {
 
           <div className="px-4 sm:px-5 mb-5">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-900" style={{ fontWeight: 700 }}>
-                  Top Picks For You
-                </span>
-                <AIBadge module={2} variant="mini" />
-              </div>
+              <span className="text-sm text-gray-900" style={{ fontWeight: 700 }}>
+                Top Picks For You
+              </span>
               <button className="text-xs flex items-center gap-0.5" style={{ color: BRAND }}>
                 See all <ChevronRight className="w-3 h-3" />
               </button>
@@ -602,35 +588,6 @@ export default function Home() {
         </div>
 
         <div className="hidden md:flex flex-col gap-4 w-72 lg:w-80 shrink-0 border-l border-gray-100 px-5 py-5 bg-white min-h-full">
-          <div>
-            <div className="flex items-center gap-1.5 mb-3">
-              <Zap className="w-3.5 h-3.5" style={{ color: BRAND }} />
-              <span className="text-xs text-gray-900" style={{ fontWeight: 700 }}>
-                AI SYSTEMS
-              </span>
-            </div>
-            <div className="space-y-2">
-              {aiModuleCards.map((moduleCard) => (
-                <div
-                  key={moduleCard.num}
-                  className="flex items-center gap-3 rounded-xl p-3 border"
-                  style={{ background: moduleCard.bg, borderColor: `${moduleCard.color}20` }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: moduleCard.color }}>
-                    <moduleCard.icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-xs" style={{ color: moduleCard.color, fontWeight: 700 }}>
-                      {moduleCard.label}
-                    </div>
-                    <div className="text-[10px] text-gray-500">{moduleCard.desc}</div>
-                  </div>
-                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: moduleCard.color }} />
-                </div>
-              ))}
-            </div>
-          </div>
-
           <button
             onClick={() => navigate("/app/gift")}
             className="w-full py-3.5 rounded-2xl text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"

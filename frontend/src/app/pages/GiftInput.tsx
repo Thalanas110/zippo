@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import {
   ChevronLeft,
   Sparkles,
-  Brain,
   Lightbulb,
   ClipboardList,
   Cake,
@@ -25,7 +24,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
-import { AIBadge } from "../components/AIBadge";
 import { api } from "@/lib/api";
 import { budgetToRange, rankedProductToUiProduct } from "@/lib/zippo-mappers";
 
@@ -236,13 +234,6 @@ export default function GiftInput() {
             </div>
           </div>
 
-          <div className="rounded-xl p-3 flex items-start gap-2.5" style={{ background: "#EFF6FF", border: "1px solid #DBEAFE" }}>
-            <Brain className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700">
-              <span style={{ fontWeight: 700 }}>Module 1 + 2 will run on submit.</span> Gift Intelligence filters the live catalog first, then Personalizer ranks the strongest matches for {recipient}.
-            </p>
-          </div>
-
           <button
             onClick={handleFindGifts}
             disabled={loading}
@@ -286,7 +277,6 @@ export default function GiftInput() {
             <div className="flex items-center gap-2 mb-3">
               <ClipboardList className="w-4 h-4" style={{ color: BRAND }} />
               <span className="text-xs text-gray-900" style={{ fontWeight: 700 }}>REQUEST SNAPSHOT</span>
-              <AIBadge module={2} variant="mini" />
             </div>
             <p className="text-xs text-gray-500">These inputs will be sent to the live marketplace search.</p>
           </div>
