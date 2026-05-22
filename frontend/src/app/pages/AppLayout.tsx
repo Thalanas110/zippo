@@ -173,6 +173,10 @@ export default function AppLayout() {
     [authRole],
   );
 
+  useEffect(() => {
+    document.title = `${meta.title} | ZIPPO - Zip your pick, We make it quick`;
+  }, [meta.title]);
+
   return (
     <div className="min-h-screen flex bg-gray-50 overflow-x-hidden">
       <aside className="hidden md:flex flex-col w-60 lg:w-64 min-h-screen bg-white border-r border-gray-100 fixed top-0 left-0 z-20 shadow-sm">
