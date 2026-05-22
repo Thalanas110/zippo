@@ -260,11 +260,6 @@ export default function Home() {
               <Flame className="w-4 h-4 text-yellow-400" />
             </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-            <span className="text-white" style={{ fontWeight: 800, fontSize: 14 }}>
-              {userName.split(" ").map((name) => name[0]).join("").slice(0, 2)}
-            </span>
-          </div>
         </div>
 
         <div className="bg-white rounded-2xl px-4 py-2 mb-4">
@@ -285,15 +280,6 @@ export default function Home() {
               <Search className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          <AIBadge module={1} variant="mini" />
-          <AIBadge module={2} variant="mini" />
-          <AIBadge module={3} variant="mini" />
-          <span className="text-red-200 text-[10px]">
-            {loading ? "Refreshing live catalog" : error ? "Live catalog needs attention" : "Catalog synced from backend"}
-          </span>
         </div>
       </div>
 

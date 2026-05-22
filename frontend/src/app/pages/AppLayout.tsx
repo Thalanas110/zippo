@@ -28,12 +28,6 @@ const navItems = [
   { icon: User, label: "Profile", path: "/app/profile" },
 ];
 
-const aiModules = [
-  { num: 1, label: "Gift Intelligence", color: "#2563EB" },
-  { num: 2, label: "Personalizer", color: "#7C3AED" },
-  { num: 3, label: "Delivery Optimizer", color: "#059669" },
-];
-
 const portals = [
   { label: "Vendor Dashboard", path: "/vendor/dashboard", icon: ShoppingBag, color: "#2563EB", role: "store_owner" },
   { label: "Rider Dashboard", path: "/rider/dashboard", icon: Truck, color: "#059669", role: "driver" },
@@ -113,27 +107,6 @@ function SidebarBody({
           </div>
         )}
       </nav>
-
-      <div className="px-4 pb-5 shrink-0">
-        <div className="rounded-xl p-3 border border-gray-100" style={{ background: "#FAFAFA" }}>
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-[11px] text-green-700" style={{ fontWeight: 700 }}>3 AI Systems Active</span>
-          </div>
-          {aiModules.map((module) => (
-            <div key={module.num} className="flex items-center gap-2 py-0.5">
-              <div
-                className="w-4 h-4 rounded shrink-0 flex items-center justify-center text-white"
-                style={{ background: module.color, fontSize: 9, fontWeight: 800 }}
-              >
-                {module.num}
-              </div>
-              <span className="text-[11px] text-gray-600 flex-1">{module.label}</span>
-              <div className="w-1 h-1 rounded-full animate-pulse" style={{ background: module.color }} />
-            </div>
-          ))}
-        </div>
-      </div>
     </>
   );
 }
