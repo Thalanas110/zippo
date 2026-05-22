@@ -34,14 +34,14 @@ const portals = [
   { label: "Admin Dashboard", path: "/admin/dashboard", icon: LayoutDashboard, color: "#7C3AED", role: "admin" },
 ];
 
-const pageTitles: Record<string, { title: string; sub: string }> = {
-  "/app/home": { title: "Home", sub: "Good to see you" },
-  "/app/gift": { title: "Find a Gift", sub: "AI Module 1 + 2 active" },
-  "/app/recommendations": { title: "Recommendations", sub: "AI-curated just for you" },
-  "/app/delivery": { title: "Delivery", sub: "AI Module 3 - Rider Assignment" },
-  "/app/confirmed": { title: "Order Confirmed", sub: "Sit back and relax" },
-  "/app/orders": { title: "My Orders", sub: "All your gift deliveries" },
-  "/app/profile": { title: "My Profile", sub: "Account & preferences" },
+const pageTitles: Record<string, { title: string; sub?: string }> = {
+  "/app/home": { title: "Home" },
+  "/app/gift": { title: "Find a Gift" },
+  "/app/recommendations": { title: "Recommendations" },
+  "/app/delivery": { title: "Delivery" },
+  "/app/confirmed": { title: "Order Confirmed" },
+  "/app/orders": { title: "My Orders" },
+  "/app/profile": { title: "My Profile" },
 };
 
 function SidebarBody({
@@ -140,7 +140,7 @@ export default function AppLayout() {
     return location.pathname === path;
   };
 
-  const meta = pageTitles[location.pathname] ?? { title: "ZIPPO", sub: "Premium Gifting" };
+  const meta = pageTitles[location.pathname] ?? { title: "ZIPPO" };
   const visiblePortals = useMemo(
     () => portals.filter((portal) => portal.role === authRole),
     [authRole],
@@ -221,7 +221,7 @@ export default function AppLayout() {
         <header className="hidden md:flex items-center justify-between px-8 py-4 bg-white border-b border-gray-100 sticky top-0 z-10 shrink-0">
           <div>
             <h1 className="text-gray-900" style={{ fontWeight: 800, fontSize: 17 }}>{meta.title}</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{meta.sub}</p>
+            {meta.sub && <p className="text-xs text-gray-400 mt-0.5">{meta.sub}</p>}
           </div>
           <div className="flex items-center gap-3">
             <div

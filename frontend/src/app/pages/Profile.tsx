@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import {
   User, MapPin, Bell, Shield, HelpCircle, LogOut,
   ChevronRight, Star, Package, Heart, Edit2,
-  TrendingUp, Gift,
+  Gift,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import { api } from "@/lib/api";
@@ -315,7 +315,6 @@ export default function Profile() {
             {[
               { icon: Gift, label: "Send a Gift", path: "/app/gift", bg: "#FFF1F2", color: BRAND },
               { icon: Package, label: "My Orders", path: "/app/orders", bg: "#EFF6FF", color: "#2563EB" },
-              { icon: TrendingUp, label: "Edit Profile", path: "", bg: "#F5F3FF", color: "#7C3AED" },
             ].map((a) => (
               <button
                 key={a.label}

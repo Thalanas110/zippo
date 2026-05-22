@@ -165,7 +165,6 @@ export default function GiftInput() {
           </button>
           <div>
             <h2 className="text-gray-900" style={{ fontWeight: 800, fontSize: 17 }}>Find a Gift</h2>
-            <p className="text-xs text-gray-400">Tell us about the occasion and we will search the live catalog for the best match.</p>
           </div>
         </div>
       </div>

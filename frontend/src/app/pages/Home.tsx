@@ -253,7 +253,6 @@ export default function Home() {
         </div>
 
         <div className="bg-white rounded-2xl px-4 py-2 mb-4">
-          <p className="text-xs text-gray-400 mb-1">Search live gifts from your marketplace catalog</p>
           <div className="flex items-center gap-2">
             <input
               type="text"

@@ -200,7 +200,6 @@ export default function Orders() {
             <Filter className="w-4 h-4 text-gray-500" />
           </button>
         </div>
-        <p className="text-xs text-gray-400">Live order history from your buyer account</p>
       </div>
 
       <div className="hidden md:grid grid-cols-4 gap-4 px-6 py-5">

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronLeft, ChevronRight, Star, MapPin, Users, TrendingUp, BarChart2, Gift } from "lucide-react";
 import { useGift } from "../context/GiftContext";
-import { AIBadge } from "../components/AIBadge";
 import type { Product } from "../context/GiftContext";
 
 const BRAND = "#8B1520";
@@ -72,8 +71,6 @@ export default function Recommendations() {
             Budget: P{giftParams.budget.toLocaleString()}
           </span>
         </div>
-
-        <AIBadge module={2} label="Recommendations Active" />
       </div>
 
       <div className="flex flex-col md:flex-row md:items-start">
@@ -110,7 +107,6 @@ export default function Recommendations() {
                   <div className="px-4 py-2 flex items-center gap-2" style={{ background: BRAND }}>
                     <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
                     <span className="text-white text-xs" style={{ fontWeight: 700 }}>TOP PERSONALIZED PICK</span>
-                    <AIBadge module={2} variant="mini" />
                   </div>
                 )}
                 <div className="p-4 flex gap-3">
@@ -166,11 +162,10 @@ export default function Recommendations() {
         <div className="hidden md:flex flex-col gap-4 w-72 lg:w-80 shrink-0 border-l border-gray-100 px-5 py-5 bg-white">
           <div className="rounded-2xl bg-white border border-gray-100 p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-purple-600" />
-                <span className="text-xs text-gray-900" style={{ fontWeight: 700 }}>RECOMMENDATION PULSE</span>
-              </div>
-              <AIBadge module={2} variant="mini" />
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-purple-600" />
+                  <span className="text-xs text-gray-900" style={{ fontWeight: 700 }}>RECOMMENDATION PULSE</span>
+                </div>
             </div>
             <div className="space-y-2">
               {[
