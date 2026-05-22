@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ChevronLeft,
-  Gift,
   Sparkles,
   Lightbulb,
   ClipboardList,
@@ -32,7 +31,8 @@ import {
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import { api } from "@/lib/api";
-import { budgetToRange, rankedProductToUiProduct } from "@/lib/zippo-mappers";
+import { rankedProductToUiProduct } from "@/lib/zippo-mappers";
+import { filterDemoCatalog, isLocalDemoMode, toDemoProduct } from "@/lib/demo-catalog";
 
 const BRAND = "#8B1520";
 
@@ -59,7 +59,7 @@ const recipients = [
 ];
 
 const giftTypes = [
-  { id: "Any", icon: Gift },
+  { id: "Any", icon: Sparkles },
   { id: "Electronics", icon: Laptop },
   { id: "Food", icon: UtensilsCrossed },
   { id: "Clothes", icon: Shirt },
@@ -82,7 +82,7 @@ const tips = [
 
 export default function GiftInput() {
   const navigate = useNavigate();
-  const { giftParams, setGiftParams, setRecommendations, numericUserId } = useGift();
+  const { giftParams, setGiftParams, setRecommendations } = useGift();
 
   const [occasion, setOccasion] = useState(giftParams.occasion);
   const [recipient, setRecipient] = useState(giftParams.recipient);
@@ -123,44 +123,94 @@ export default function GiftInput() {
     setLoading(true);
     setError("");
     try {
-      const budgetRange = budgetToRange(budget);
-      const giftFilter = await api.giftFilter({
-        occasion,
-        recipient_type: recipient,
-        budget_range: budgetRange,
-        prefer_local: true,
-        user_id: numericUserId || null,
-      });
+      if (isLocalDemoMode()) {
+        const demoResults = filterDemoCatalog({
+          occasion,
+          recipient,
+          giftType,
+          budget,
+          search: null,
+        }).slice(0, 10);
 
-      let mergedResults = giftFilter.results;
-      if (numericUserId > 0) {
-        try {
-          const cbf = await api.cbf({
-            user_id: numericUserId,
-            occasion,
-            recipient_type: recipient,
-            top_k: 10,
-          });
-          const seen = new Set<string>();
-          mergedResults = [...cbf.results, ...giftFilter.results].filter((row) => {
-            const key = String(row.id);
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
-        } catch {
-          // Keep Gift Intelligence results if CBF fails.
+        if (demoResults.length === 0) {
+          setRecommendations([]);
+          setError(`No ${giftType.toLowerCase()} gifts matched this request yet. Try another gift type or widen the budget.`);
+          return;
         }
+
+        setRecommendations(demoResults.map((item, idx) => toDemoProduct(item, idx)));
+        navigate("/app/recommendations");
+        return;
       }
 
-      const narrowedResults = mergedResults.filter((row) => matchesGiftType(row, giftType));
-      if (narrowedResults.length === 0) {
+      const broadCatalog = await api.catalogSearch({
+        search: null,
+        occasion: giftType === "Any" ? occasion : null,
+        recipient_type: giftType === "Any" ? recipient : null,
+        budget_range: null,
+        prefer_local: true,
+        user_id: null,
+        top_k: 120,
+      });
+
+      const typedMatches = broadCatalog.results.filter((row) => matchesGiftType(row, giftType));
+      const premiumTypedMatches = typedMatches.filter((row) => {
+        const sourceId = Number(row.source_id ?? row.product_id ?? row.id);
+        return Number.isFinite(sourceId) && sourceId >= 740000000;
+      });
+
+      const withinBudget = typedMatches.filter((row) => {
+        const price = Number(row.price ?? 0) || 0;
+        return price > 0 && price <= budget;
+      });
+
+      const premiumWithinBudget = premiumTypedMatches.filter((row) => {
+        const price = Number(row.price ?? 0) || 0;
+        return price > 0 && price <= budget;
+      });
+
+      const scoreRow = (row: { price?: unknown; local?: unknown; score?: unknown; occasion_tags?: unknown; occasions?: unknown; recipient_tags?: unknown; recipients?: unknown }) => {
+        const price = Number(row.price ?? 0) || 0;
+        const occasionValues = [
+          ...(Array.isArray(row.occasion_tags) ? row.occasion_tags : []),
+          ...(Array.isArray(row.occasions) ? row.occasions : []),
+        ].map((entry) => String(entry ?? "").toLowerCase());
+        const recipientValues = [
+          ...(Array.isArray(row.recipient_tags) ? row.recipient_tags : []),
+          ...(Array.isArray(row.recipients) ? row.recipients : []),
+        ].map((entry) => String(entry ?? "").toLowerCase());
+        const occasionHit = occasionValues.includes(occasion.toLowerCase()) ? 4 : 0;
+        const recipientHit = recipientValues.includes(recipient.toLowerCase()) ? 4 : 0;
+        const sourceId = Number((row as { source_id?: unknown; product_id?: unknown; id?: unknown }).source_id ?? (row as { product_id?: unknown }).product_id ?? (row as { id?: unknown }).id);
+        const marketplaceBonus = Number.isFinite(sourceId) && sourceId >= 740000000 ? 3 : 0;
+        const localBonus = row.local !== false ? 1 : 0;
+        const withinBudgetBonus = price > 0 && price <= budget ? 3 : 0;
+        const distancePenalty = price > 0 ? Math.min(Math.abs(price - budget) / Math.max(budget, 1), 6) : 6;
+        const modelScore = typeof row.score === "number" ? row.score : 0;
+        return occasionHit + recipientHit + marketplaceBonus + localBonus + withinBudgetBonus + modelScore - distancePenalty;
+      };
+
+      const sortByIntent = <T extends { price?: unknown; local?: unknown; score?: unknown; occasion_tags?: unknown; occasions?: unknown; recipient_tags?: unknown; recipients?: unknown }>(rows: T[]) =>
+        [...rows].sort((left, right) => scoreRow(right) - scoreRow(left) || (Number(left.price ?? 0) - Number(right.price ?? 0)));
+
+      const finalResults =
+        giftType === "Any"
+          ? (withinBudget.length > 0 ? sortByIntent(withinBudget) : sortByIntent(typedMatches))
+          : premiumWithinBudget.length > 0
+            ? sortByIntent(premiumWithinBudget)
+            : premiumTypedMatches.length > 0
+              ? sortByIntent(premiumTypedMatches)
+              : withinBudget.length > 0
+                ? sortByIntent(withinBudget)
+                : sortByIntent(typedMatches);
+
+      if (finalResults.length === 0) {
         setRecommendations([]);
         setError(`No ${giftType.toLowerCase()} gifts matched this request yet. Try another gift type or widen the budget.`);
         return;
       }
 
-      const mapped = narrowedResults.slice(0, 10).map((row, idx) => rankedProductToUiProduct(row, idx));
+      const mapped = finalResults.slice(0, 10).map((row, idx) => rankedProductToUiProduct(row, idx));
       setRecommendations(mapped);
       navigate("/app/recommendations");
     } catch {

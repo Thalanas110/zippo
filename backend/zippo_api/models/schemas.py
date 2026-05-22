@@ -26,6 +26,8 @@ class DeliveryOptimizeRequest(BaseModel):
     barangay: str
     lat: float
     lng: float
+    pickup_lat: Optional[float] = None
+    pickup_lng: Optional[float] = None
 
 
 class BaselineRequestModel(BaseModel):

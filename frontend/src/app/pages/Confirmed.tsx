@@ -214,7 +214,11 @@ export default function Confirmed() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button className="py-3.5 rounded-2xl border-2 text-sm flex items-center justify-center gap-1.5 transition-all hover:bg-gray-50" style={{ borderColor: BRAND, color: BRAND, fontWeight: 700 }}>
+            <button
+              onClick={() => navigate("/app/orders")}
+              className="py-3.5 rounded-2xl border-2 text-sm flex items-center justify-center gap-1.5 transition-all hover:bg-gray-50"
+              style={{ borderColor: BRAND, color: BRAND, fontWeight: 700 }}
+            >
               <Package className="w-4 h-4" />Track Order
             </button>
             <button onClick={() => navigate("/app/gift")} className="py-3.5 rounded-2xl text-white text-sm flex items-center justify-center gap-1.5 transition-all hover:opacity-90" style={{ background: BRAND, fontWeight: 700 }}>
@@ -249,8 +253,8 @@ export default function Confirmed() {
             <DeliveryRouteMap
               path={orderDetails.routePath}
               stops={orderDetails.routeStops}
-              riderLabel={`Rider ${orderDetails.riderName}`}
-              destinationLabel="Delivery destination"
+              pickupLabel={`${product.store} pickup`}
+              destinationLabel={orderDetails.address}
             />
             <div className="absolute top-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-2 shadow flex items-center gap-2 z-[500]">
               <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />

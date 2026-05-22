@@ -27,14 +27,19 @@ export interface Product {
   name: string;
   store: string;
   location: string;
+  storeLat?: number;
+  storeLng?: number;
+  storeLogo?: string;
   price: number;
   match: number;
   badge?: string;
   image: string;
+  fallbackImage?: string;
   tags: string[];
   category?: string;
   stock?: number;
   explanation?: string;
+  description?: string;
 }
 
 export interface OrderDetails {

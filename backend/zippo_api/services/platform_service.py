@@ -113,6 +113,7 @@ class PlatformService:
             "id": f"mkt-{row.get('product_id')}",
             "name": row.get("name"),
             "description": row.get("description", ""),
+            "image_url": row.get("image_url"),
             "price": _safe_float(row.get("price"), 0.0),
             "category": row.get("category", "gift"),
             "vendor_id": row.get("store_id"),

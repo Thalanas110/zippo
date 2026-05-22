@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ChevronLeft, ChevronRight, Star, MapPin, Users, TrendingUp, BarChart2, Gift } from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import type { Product } from "../context/GiftContext";
+import { ProductDetailModal } from "../components/ProductDetailModal";
 
 const BRAND = "#8B1520";
 
@@ -10,6 +11,7 @@ export default function Recommendations() {
   const navigate = useNavigate();
   const { giftParams, userName, setSelectedProduct, recommendations } = useGift();
   const [selected, setSelected] = useState<number | string | null>(null);
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
 
   const recommendationList = recommendations;
 
@@ -116,16 +118,32 @@ export default function Recommendations() {
                 )}
                 <div className="p-4 flex gap-3">
                   <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      onError={(event) => {
+                        if (product.fallbackImage && event.currentTarget.src !== product.fallbackImage) {
+                          event.currentTarget.src = product.fallbackImage;
+                        }
+                      }}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <span className="text-xs text-gray-400 mb-0.5 block">#{index + 1} | {product.store}</span>
                         <div className="text-sm text-gray-900" style={{ fontWeight: 700 }}>{product.name}</div>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                          {product.storeLogo ? (
+                            <img
+                              src={product.storeLogo}
+                              alt={product.store}
+                              className="w-5 h-5 rounded-md border border-gray-100 bg-white shrink-0"
+                            />
+                          ) : null}
                           <MapPin className="w-2.5 h-2.5 text-gray-400" />
-                          <span className="text-xs text-gray-400">{product.location}</span>
+                          <span className="text-xs text-gray-400 truncate">{product.location}</span>
                         </div>
                       </div>
                       <span className="text-sm shrink-0" style={{ color: BRAND, fontWeight: 800 }}>P{product.price}</span>
@@ -140,19 +158,29 @@ export default function Recommendations() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {product.tags.map((tag) => (
+                      {product.tags.slice(0, 3).map((tag) => (
                         <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "#F0FDF4", color: "#059669", fontWeight: 600 }}>{tag}</span>
                       ))}
                     </div>
                   </div>
                 </div>
-                <div className="px-4 pb-4">
+                <div className="px-4 pb-4 flex gap-2">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setDetailProduct(product);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm"
+                    style={{ fontWeight: 700 }}
+                  >
+                    Details
+                  </button>
                   <button
                     onClick={(event) => {
                       event.stopPropagation();
                       handleSelect(product);
                     }}
-                    className="w-full py-2.5 rounded-xl text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                    className="flex-1 py-2.5 rounded-xl text-white flex items-center justify-center gap-2 transition-all hover:opacity-90"
                     style={{ background: index === 0 ? BRAND : "#374151", fontWeight: 700, fontSize: 13 }}
                   >
                     {index === 0 ? "Select this top pick" : `Select #${index + 1}`}
@@ -239,6 +267,14 @@ export default function Recommendations() {
           </div>
         </div>
       </div>
+      <ProductDetailModal
+        product={detailProduct}
+        onClose={() => setDetailProduct(null)}
+        onBuyNow={(product) => {
+          setDetailProduct(null);
+          handleSelect(product);
+        }}
+      />
     </div>
   );
 }

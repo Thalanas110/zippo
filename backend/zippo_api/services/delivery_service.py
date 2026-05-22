@@ -43,8 +43,10 @@ class DeliveryService:
             order_row = None
 
         riders = [self._normalize_rider(row) for row in self.repo.fetch_riders()]
-        pickup_lat = (order_row or {}).get("pickup_lat") or req.lat
-        pickup_lng = (order_row or {}).get("pickup_lng") or req.lng
+        request_pickup_lat = getattr(req, "pickup_lat", None)
+        request_pickup_lng = getattr(req, "pickup_lng", None)
+        pickup_lat = request_pickup_lat or (order_row or {}).get("pickup_lat") or req.lat
+        pickup_lng = request_pickup_lng or (order_row or {}).get("pickup_lng") or req.lng
         order = {
             "id": req.order_id,
             "pickup_lat": pickup_lat,

@@ -24,6 +24,15 @@ DELIVERY_ZONES = [
     "Asinan",
 ]
 
+CATEGORY_STYLES = {
+    "electronics": {"accent": "#2563EB", "background": "#EFF6FF", "emoji": "💻"},
+    "food": {"accent": "#EA580C", "background": "#FFF7ED", "emoji": "🍪"},
+    "clothes": {"accent": "#7C3AED", "background": "#F5F3FF", "emoji": "🧥"},
+    "accessories": {"accent": "#DB2777", "background": "#FDF2F8", "emoji": "⌚"},
+    "home": {"accent": "#0F766E", "background": "#F0FDFA", "emoji": "🕯️"},
+    "flowers": {"accent": "#BE185D", "background": "#FDF2F8", "emoji": "🌷"},
+}
+
 PREMIUM_CATALOG = [
     {
         "store_name": "Harbor Tech Studio",
@@ -386,6 +395,32 @@ def batch_upsert(schema, table: str, conflict_column: str, rows: list[dict[str, 
         batch = rows[offset : offset + batch_size]
         schema.table(table).upsert(batch, on_conflict=conflict_column).execute()
         print(f"Seeded {len(batch)} rows into zippo.{table} ({offset + len(batch)}/{len(rows)})")
+
+
+def build_product_image_data_uri(name: str, category: str, store_name: str) -> str:
+    style = CATEGORY_STYLES.get(category, {"accent": "#8B1520", "background": "#FFF1F2", "emoji": "🎁"})
+    accent = style["accent"]
+    background = style["background"]
+    emoji = style["emoji"]
+    safe_name = quote(name[:30])
+    safe_store = quote(store_name[:28])
+    safe_category = quote(category.title())
+    svg = f"""
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+  <rect width="900" height="900" rx="72" fill="{background}"/>
+  <rect x="60" y="60" width="780" height="780" rx="56" fill="white" stroke="{accent}" stroke-width="10"/>
+  <circle cx="180" cy="180" r="86" fill="{accent}"/>
+  <text x="180" y="208" text-anchor="middle" font-size="82" font-family="Arial, sans-serif">{emoji}</text>
+  <rect x="90" y="308" width="300" height="28" rx="14" fill="{accent}" opacity="0.15"/>
+  <text x="92" y="360" font-size="40" font-weight="700" font-family="Arial, sans-serif" fill="{accent}">{category.title()}</text>
+  <text x="92" y="448" font-size="68" font-weight="800" font-family="Arial, sans-serif" fill="#111827">{name}</text>
+  <text x="92" y="520" font-size="34" font-family="Arial, sans-serif" fill="#6B7280">{store_name}</text>
+  <rect x="92" y="598" width="716" height="148" rx="32" fill="{accent}" opacity="0.08"/>
+  <text x="130" y="660" font-size="30" font-family="Arial, sans-serif" fill="{accent}">ZIPPO DEMO PICK</text>
+  <text x="130" y="714" font-size="28" font-family="Arial, sans-serif" fill="#374151">Curated synthetic product art for presentation mode</text>
+</svg>
+""".strip()
+    return f"data:image/svg+xml;utf8,{quote(svg)}"
 
 
 def build_rows() -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:

@@ -237,6 +237,8 @@ export interface DeliveryOptimizeRequest {
   barangay: string;
   lat: number;
   lng: number;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
 }
 
 export interface DeliveryRoutePoint {

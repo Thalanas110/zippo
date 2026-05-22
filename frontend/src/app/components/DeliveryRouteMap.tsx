@@ -4,7 +4,7 @@ import type { DeliveryRoutePoint, DeliveryRouteStop } from "@/lib/api";
 interface DeliveryRouteMapProps {
   path: DeliveryRoutePoint[];
   stops: DeliveryRouteStop[];
-  riderLabel: string;
+  pickupLabel: string;
   destinationLabel: string;
 }
 
@@ -22,7 +22,7 @@ function FitBounds({ points }: { points: DeliveryRoutePoint[] }) {
 export function DeliveryRouteMap({
   path,
   stops,
-  riderLabel,
+  pickupLabel,
   destinationLabel,
 }: DeliveryRouteMapProps) {
   const fallbackPath = path.length > 0 ? path : [
@@ -45,10 +45,13 @@ export function DeliveryRouteMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitBounds points={fallbackPath} />
-      <Polyline positions={fallbackPath.map((point) => [point.lat, point.lng] as [number, number])} pathOptions={{ color: "#8B1520", weight: 5 }} />
+      <Polyline
+        positions={fallbackPath.map((point) => [point.lat, point.lng] as [number, number])}
+        pathOptions={{ color: "#8B1520", weight: 5, opacity: 0.9 }}
+      />
 
       <CircleMarker center={[pickup.lat, pickup.lng]} radius={10} pathOptions={{ color: "#059669", fillColor: "#10B981", fillOpacity: 1 }}>
-        <Popup>{riderLabel}</Popup>
+        <Popup>{pickupLabel}</Popup>
       </CircleMarker>
       <CircleMarker center={[dropoff.lat, dropoff.lng]} radius={10} pathOptions={{ color: "#8B1520", fillColor: "#B91C1C", fillOpacity: 1 }}>
         <Popup>{destinationLabel}</Popup>

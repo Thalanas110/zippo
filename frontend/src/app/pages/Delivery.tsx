@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { ChevronLeft, MapPin, CheckCircle2, Navigation, Route } from "lucide-react";
 import { useGift } from "../context/GiftContext";
 import { DeliveryRouteMap } from "../components/DeliveryRouteMap";
-import { api, type DeliveryOptimizeResponse } from "@/lib/api";
+import { api, type DeliveryOptimizeResponse, type DeliveryRoutePoint, type DeliveryRouteStop } from "@/lib/api";
 import { appSlotToApiSlot } from "@/lib/zippo-mappers";
+import { buildRouteWaypointSequence, fetchRoadRoute, geocodeAddress } from "@/lib/geo-routing";
 
 const BRAND = "#8B1520";
 const DEFAULT_LAT = 14.8386;
@@ -24,6 +25,37 @@ const etaSteps = [
   { label: "Delivered", done: false },
 ];
 
+type ResolvedDestination = {
+  lat: number;
+  lng: number;
+  label: string;
+};
+
+function stopsMatchRouteEndpoints(
+  stops: DeliveryRouteStop[],
+  pickup: DeliveryRoutePoint,
+  dropoff: DeliveryRoutePoint,
+): boolean {
+  if (stops.length < 2) return false;
+  const first = stops[0];
+  const last = stops[stops.length - 1];
+  const closeToPickup = Math.abs(first.lat - pickup.lat) < 0.0008 && Math.abs(first.lng - pickup.lng) < 0.0008;
+  const closeToDropoff = Math.abs(last.lat - dropoff.lat) < 0.0008 && Math.abs(last.lng - dropoff.lng) < 0.0008;
+  const distinctEndpoints =
+    Math.abs(first.lat - last.lat) > 0.0001 || Math.abs(first.lng - last.lng) > 0.0001;
+  return closeToPickup && closeToDropoff && distinctEndpoints;
+}
+
+function buildFallbackStops(
+  pickup: DeliveryRoutePoint,
+  dropoff: DeliveryRoutePoint,
+): DeliveryRouteStop[] {
+  return [
+    { sequence: 1, type: "pickup", lat: pickup.lat, lng: pickup.lng },
+    { sequence: 2, type: "dropoff", lat: dropoff.lat, lng: dropoff.lng },
+  ];
+}
+
 export default function Delivery() {
   const navigate = useNavigate();
   const { giftParams, selectedProduct, orderDetails, setOrderDetails } = useGift();
@@ -34,42 +66,98 @@ export default function Delivery() {
   const [preview, setPreview] = useState<DeliveryOptimizeResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(true);
   const [previewError, setPreviewError] = useState("");
+  const [previewPath, setPreviewPath] = useState<DeliveryRoutePoint[]>([]);
+  const [previewStops, setPreviewStops] = useState<DeliveryRouteStop[]>([]);
+  const [destination, setDestination] = useState<ResolvedDestination>({
+    lat: DEFAULT_LAT,
+    lng: DEFAULT_LNG,
+    label: orderDetails.address,
+  });
   const [previewOrderSeed] = useState(() => Number(String(Date.now()).slice(-6)));
 
   const product = selectedProduct ?? { name: "Gift order", price: 0, store: "ZIPPO Marketplace" };
+  const pickupPoint = useMemo<DeliveryRoutePoint>(
+    () => ({
+      lat: selectedProduct?.storeLat ?? DEFAULT_LAT,
+      lng: selectedProduct?.storeLng ?? DEFAULT_LNG,
+    }),
+    [selectedProduct?.storeLat, selectedProduct?.storeLng],
+  );
 
   useEffect(() => {
     let active = true;
-    setPreviewLoading(true);
-    setPreviewError("");
 
-    void api
-      .optimizeDelivery({
-        order_id: previewOrderSeed,
-        time_slot: appSlotToApiSlot(selectedSlot),
-        barangay: address.split(",")[0]?.trim() || "Barangay 5",
-        lat: DEFAULT_LAT,
-        lng: DEFAULT_LNG,
-      })
-      .then((response) => {
+    async function loadPreview() {
+      setPreviewLoading(true);
+      setPreviewError("");
+
+      const resolvedDestination =
+        (await geocodeAddress(address).catch(() => null)) ?? {
+          lat: DEFAULT_LAT,
+          lng: DEFAULT_LNG,
+          label: address || "Delivery destination",
+        };
+
+      if (!active) return;
+      setDestination(resolvedDestination);
+
+      try {
+        const response = await api.optimizeDelivery({
+          order_id: previewOrderSeed,
+          time_slot: appSlotToApiSlot(selectedSlot),
+          barangay: address.split(",")[0]?.trim() || "Barangay 5",
+          lat: resolvedDestination.lat,
+          lng: resolvedDestination.lng,
+          pickup_lat: pickupPoint.lat,
+          pickup_lng: pickupPoint.lng,
+        });
+
         if (!active) return;
+
+        const fallbackStops = buildFallbackStops(pickupPoint, resolvedDestination);
+        const stops =
+          response.stops && stopsMatchRouteEndpoints(response.stops, pickupPoint, resolvedDestination)
+            ? response.stops
+            : fallbackStops;
+        const snappedPath =
+          (await fetchRoadRoute(
+            buildRouteWaypointSequence(pickupPoint, resolvedDestination, stops),
+          ).catch(() => null)) ??
+          response.path ??
+          buildRouteWaypointSequence(pickupPoint, resolvedDestination, stops);
+
+        if (!active) return;
+
         setPreview(response);
-      })
-      .catch(() => {
+        setPreviewStops(stops);
+        setPreviewPath(snappedPath);
+      } catch {
         if (!active) return;
+
+        const fallbackStops = buildFallbackStops(pickupPoint, resolvedDestination);
+        const snappedPath =
+          (await fetchRoadRoute([pickupPoint, resolvedDestination]).catch(() => null)) ?? [
+            pickupPoint,
+            resolvedDestination,
+          ];
+
         setPreview(null);
-        setPreviewError("Route preview is unavailable until rider data is reachable from the backend.");
-      })
-      .finally(() => {
+        setPreviewStops(fallbackStops);
+        setPreviewPath(snappedPath);
+        setPreviewError("Rider assignment preview is unavailable right now, but the route preview still reflects the mapped road network.");
+      } finally {
         if (active) {
           setPreviewLoading(false);
         }
-      });
+      }
+    }
+
+    void loadPreview();
 
     return () => {
       active = false;
     };
-  }, [address, previewOrderSeed, selectedSlot]);
+  }, [address, pickupPoint, previewOrderSeed, selectedSlot]);
 
   const riderName = preview?.rider_name || orderDetails.riderName;
   const riderId = preview?.rider_id ? `#${String(preview.rider_id).replace(/^#?/, "")}` : orderDetails.riderId;
@@ -83,7 +171,9 @@ export default function Delivery() {
       ? `${Math.round(preview.estimated_minutes)} min`
       : orderDetails.etaMinutes;
   const assignmentReason =
-    preview?.reason || orderDetails.assignmentReason || "Closest available rider for your selected time slot.";
+    preview?.reason ||
+    orderDetails.assignmentReason ||
+    "Closest available rider for your selected time slot.";
 
   const handleConfirm = async () => {
     setError("");
@@ -92,13 +182,39 @@ export default function Delivery() {
       const now = new Date();
       const orderSeed = Number(String(now.getTime()).slice(-6));
       const barangay = address.split(",")[0]?.trim() || "Barangay 5";
+      const resolvedDestination =
+        destination.lat && destination.lng
+          ? destination
+          : ((await geocodeAddress(address).catch(() => null)) ?? {
+              lat: DEFAULT_LAT,
+              lng: DEFAULT_LNG,
+              label: address || "Delivery destination",
+            });
+
       const optimized = await api.optimizeDelivery({
         order_id: orderSeed,
         time_slot: appSlotToApiSlot(selectedSlot),
         barangay,
-        lat: DEFAULT_LAT,
-        lng: DEFAULT_LNG,
+        lat: resolvedDestination.lat,
+        lng: resolvedDestination.lng,
+        pickup_lat: pickupPoint.lat,
+        pickup_lng: pickupPoint.lng,
       });
+
+      const fallbackStops = buildFallbackStops(pickupPoint, resolvedDestination);
+      const finalStops =
+        optimized.stops && stopsMatchRouteEndpoints(optimized.stops, pickupPoint, resolvedDestination)
+          ? optimized.stops
+          : previewStops.length > 0
+            ? previewStops
+            : fallbackStops;
+      const finalPath =
+        (await fetchRoadRoute(
+          buildRouteWaypointSequence(pickupPoint, resolvedDestination, finalStops),
+        ).catch(() => null)) ??
+        previewPath ??
+        optimized.path ??
+        buildRouteWaypointSequence(pickupPoint, resolvedDestination, finalStops);
 
       const etaWindow =
         selectedSlot === "morning"
@@ -124,8 +240,8 @@ export default function Delivery() {
             ? `${Math.round(optimized.estimated_minutes)} min`
             : etaMinutes,
         assignmentReason: optimized.reason || assignmentReason,
-        routePath: optimized.path ?? preview?.path ?? [],
-        routeStops: optimized.stops ?? preview?.stops ?? [],
+        routePath: finalPath,
+        routeStops: finalStops,
       });
 
       navigate("/app/confirmed");
@@ -185,7 +301,7 @@ export default function Delivery() {
                   ETA {etaMinutes}
                 </div>
                 <div className="text-[10px] text-gray-400 mt-1">
-                  {previewLoading ? "Refreshing preview" : "A* route preview"}
+                  {previewLoading ? "Refreshing preview" : "Mapped route preview"}
                 </div>
               </div>
             </div>
@@ -236,12 +352,6 @@ export default function Delivery() {
                 className="flex-1 text-sm text-gray-700 outline-none resize-none border rounded-lg p-2"
                 style={{ borderColor: "#E5E7EB" }}
               />
-            </div>
-            <div className="flex items-center gap-1.5 bg-green-50 rounded-lg px-3 py-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
-              <span className="text-[11px] text-green-700">
-                <strong>Route preview updates from the optimizer</strong> when rider data is available.
-              </span>
             </div>
           </div>
 
@@ -306,16 +416,16 @@ export default function Delivery() {
 
         <div className="hidden md:flex flex-col gap-4 w-80 lg:w-96 shrink-0 border-l border-gray-100 px-5 py-5 bg-white">
           <div className="rounded-2xl overflow-hidden border border-gray-100" style={{ height: 280, position: "relative" }}>
-            {preview && preview.path && preview.path.length > 0 ? (
+            {previewPath.length > 0 ? (
               <DeliveryRouteMap
-                path={preview.path}
-                stops={preview.stops ?? []}
-                riderLabel={riderName}
-                destinationLabel="Delivery destination"
+                path={previewPath}
+                stops={previewStops}
+                pickupLabel={`${product.store} pickup`}
+                destinationLabel={destination.label || address || "Delivery destination"}
               />
             ) : (
               <div className="h-full flex items-center justify-center px-6 text-center text-sm text-gray-500 bg-slate-50">
-                {previewLoading ? "Loading A* route preview..." : previewError || "No route preview available yet."}
+                {previewLoading ? "Loading mapped route preview..." : previewError || "No route preview available yet."}
               </div>
             )}
             <div className="absolute top-3 left-3 bg-white/90 backdrop-blur rounded-xl px-3 py-2 shadow flex items-center gap-2 z-[500]">
@@ -364,7 +474,6 @@ export default function Delivery() {
               ))}
             </div>
           </div>
-
         </div>
       </div>
     </div>

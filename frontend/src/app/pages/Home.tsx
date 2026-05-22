@@ -12,8 +12,16 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useGift } from "../context/GiftContext";
+import type { Product } from "../context/GiftContext";
+import { ProductDetailModal } from "../components/ProductDetailModal";
 import { api, type RankedProduct } from "@/lib/api";
 import { rankedProductToUiProduct } from "@/lib/zippo-mappers";
+import {
+  DEMO_CATEGORY_ORDER,
+  filterDemoCatalog,
+  isLocalDemoMode,
+  toDemoProduct,
+} from "@/lib/demo-catalog";
 
 const BRAND = "#8B1520";
 
@@ -43,23 +51,61 @@ function toStringList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function isPremiumDemoProduct(row: RankedProduct): boolean {
+  const sourceId = Number(row.source_id ?? row.product_id ?? row.id);
+  return Number.isFinite(sourceId) && sourceId >= 740000000;
+}
+
 export default function Home() {
   const navigate = useNavigate();
-  const { userName, numericUserId, setSelectedProduct } = useGift();
+  const { userName, setSelectedProduct } = useGift();
   const [activeOccasion, setActiveOccasion] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [catalogRows, setCatalogRows] = useState<RankedProduct[]>([]);
+  const [demoMode] = useState(() => isLocalDemoMode());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const selectedOccasionLabel = useMemo(
     () => OCCASIONS.find((occasion) => occasion.id === activeOccasion)?.label ?? null,
     [activeOccasion],
   );
 
+  const demoRows = useMemo(
+    () =>
+      demoMode
+        ? filterDemoCatalog({
+            occasion: activeOccasion === "all" ? null : selectedOccasionLabel,
+            recipient: null,
+            giftType: "Any",
+            budget: null,
+            search: deferredSearchQuery.trim() || null,
+          })
+        : [],
+    [activeOccasion, deferredSearchQuery, demoMode, selectedOccasionLabel],
+  );
+
+  const premiumDemoRows = useMemo(
+    () => catalogRows.filter(isPremiumDemoProduct),
+    [catalogRows],
+  );
+
+  const showcaseRows = useMemo(
+    () => (premiumDemoRows.length > 0 ? premiumDemoRows : catalogRows),
+    [catalogRows, premiumDemoRows],
+  );
+
   useEffect(() => {
+    if (demoMode) {
+      setCatalogRows([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
     let active = true;
     setLoading(true);
     setError("");
@@ -71,7 +117,7 @@ export default function Home() {
         recipient_type: null,
         budget_range: null,
         prefer_local: true,
-        user_id: numericUserId || null,
+        user_id: null,
         top_k: 24,
       })
       .then((response) => {
@@ -92,30 +138,18 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, [activeOccasion, deferredSearchQuery, numericUserId, selectedOccasionLabel]);
-
-  const topPicks = useMemo(
-    () =>
-      catalogRows.slice(0, 4).map((row, index) => {
-        const item = rankedProductToUiProduct(row, index);
-        return {
-          ...item,
-          badge: index === 0 ? "#1 Pick" : undefined,
-          stock: typeof row.stock === "number" ? row.stock : Number(row.stock ?? 0) || 0,
-          category: titleCase(row.category),
-        };
-      }),
-    [catalogRows],
-  );
-
-  const categoryFeedRows = useMemo(() => {
-    const marketplaceRows = catalogRows.filter((row) => row.source_table === "marketplace_products");
-    return marketplaceRows.length > 0 ? marketplaceRows : catalogRows;
-  }, [catalogRows]);
+  }, [activeOccasion, deferredSearchQuery, demoMode, selectedOccasionLabel]);
 
   const categories = useMemo(() => {
+    if (demoMode) {
+      const available = DEMO_CATEGORY_ORDER.filter((category) =>
+        demoRows.some((item) => item.category === category),
+      );
+      return available.length > 0 ? available : DEMO_CATEGORY_ORDER;
+    }
+
     const counts = new Map<string, number>();
-    for (const row of categoryFeedRows) {
+    for (const row of showcaseRows) {
       const category = titleCase(row.category);
       counts.set(category, (counts.get(category) ?? 0) + 1);
     }
@@ -123,7 +157,7 @@ export default function Home() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6)
       .map(([label]) => label);
-  }, [categoryFeedRows]);
+  }, [demoMode, demoRows, showcaseRows]);
 
   useEffect(() => {
     if (categories.length === 0) {
@@ -133,44 +167,69 @@ export default function Home() {
     setActiveCategory((current) => (current && categories.includes(current) ? current : categories[0]));
   }, [categories]);
 
-  const categoryProducts = useMemo(() => {
-    const grouped = new Map<
-      string,
-      Array<ReturnType<typeof rankedProductToUiProduct> & { category: string }>
-    >();
-
-    categoryFeedRows.forEach((row, index) => {
-      const category = titleCase(row.category);
-      const product = rankedProductToUiProduct(row, index);
-      const current = grouped.get(category) ?? [];
-      current.push({
-        ...product,
-        category,
-        stock: typeof row.stock === "number" ? row.stock : Number(row.stock ?? 0) || 0,
-      });
-      grouped.set(category, current);
-    });
-
-    return grouped;
-  }, [categoryFeedRows]);
-
   const activeCategoryProducts = useMemo(() => {
     if (!activeCategory) return [];
-    return (categoryProducts.get(activeCategory) ?? []).slice(0, 6);
-  }, [activeCategory, categoryProducts]);
+
+    if (demoMode) {
+      return demoRows
+        .filter((item) => item.category === activeCategory)
+        .slice(0, 12)
+        .map((item, index) => ({
+          ...toDemoProduct(item, index),
+          category: item.category,
+          stock: item.stock,
+        }));
+    }
+
+    return showcaseRows
+      .filter((row) => titleCase(row.category) === activeCategory)
+      .slice(0, 12)
+      .map((row, index) => {
+        const item = rankedProductToUiProduct(row, index);
+        return {
+          ...item,
+          category: titleCase(row.category),
+          stock: typeof row.stock === "number" ? row.stock : Number(row.stock ?? 0) || 0,
+        };
+      });
+  }, [activeCategory, demoMode, demoRows, showcaseRows]);
+
+  const topPicks = useMemo(() => {
+    if (demoMode) {
+      return demoRows.slice(0, 8).map((item, index) => ({
+        ...toDemoProduct(item, index),
+        badge: index === 0 ? "#1 Pick" : undefined,
+        stock: item.stock,
+        category: item.category,
+      }));
+    }
+
+    return showcaseRows.slice(0, 8).map((row, index) => {
+      const item = rankedProductToUiProduct(row, index);
+      return {
+        ...item,
+        badge: index === 0 ? "#1 Pick" : undefined,
+        stock: typeof row.stock === "number" ? row.stock : Number(row.stock ?? 0) || 0,
+        category: titleCase(row.category),
+      };
+    });
+  }, [demoMode, demoRows, showcaseRows]);
 
   const uniqueStores = useMemo(() => {
+    if (demoMode) {
+      return new Set(demoRows.map((item) => item.store)).size;
+    }
     const stores = new Set(
-      catalogRows
+      showcaseRows
         .map((row) => String(row.vendor_name ?? row.store_name ?? "").trim())
         .filter(Boolean),
     );
     return stores.size;
-  }, [catalogRows]);
+  }, [demoMode, demoRows, showcaseRows]);
 
   const localPickCount = useMemo(
-    () => catalogRows.filter((row) => row.local !== false).length,
-    [catalogRows],
+    () => (demoMode ? demoRows.length : showcaseRows.filter((row) => row.local !== false).length),
+    [demoMode, demoRows, showcaseRows],
   );
 
   const averageMatch = useMemo(() => {
@@ -186,8 +245,21 @@ export default function Home() {
   ];
 
   const trendingTags = useMemo(() => {
+    if (demoMode) {
+      const counts = new Map<string, number>();
+      for (const item of demoRows) {
+        for (const tag of item.tags) {
+          counts.set(titleCase(tag), (counts.get(titleCase(tag)) ?? 0) + 1);
+        }
+      }
+      return [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([label]) => label);
+    }
+
     const counts = new Map<string, number>();
-    for (const row of catalogRows) {
+    for (const row of showcaseRows) {
       const values = [
         ...toStringList(row.tags),
         ...toStringList(row.occasion_tags),
@@ -203,27 +275,38 @@ export default function Home() {
       .slice(0, 5)
       .map(([label]) => label);
     return ranked.length > 0 ? ranked : categories.slice(0, 5);
-  }, [catalogRows, categories]);
+  }, [categories, demoMode, demoRows, showcaseRows]);
 
   const storeSpotlight = useMemo(() => {
-    const storeMap = new Map<
-      string,
-      { name: string; items: number; scoreTotal: number; local: boolean }
-    >();
+    const storeMap = new Map<string, { name: string; items: number; scoreTotal: number; local: boolean }>();
 
-    for (const row of catalogRows) {
-      const name = String(row.vendor_name ?? row.store_name ?? "").trim();
-      if (!name) continue;
-      const current = storeMap.get(name) ?? {
-        name,
-        items: 0,
-        scoreTotal: 0,
-        local: row.local !== false,
-      };
-      current.items += 1;
-      current.scoreTotal += typeof row.score === "number" ? row.score : 0;
-      current.local = current.local && row.local !== false;
-      storeMap.set(name, current);
+    if (demoMode) {
+      for (const item of demoRows) {
+        const current = storeMap.get(item.store) ?? {
+          name: item.store,
+          items: 0,
+          scoreTotal: 0,
+          local: true,
+        };
+        current.items += 1;
+        current.scoreTotal += item.popularity;
+        storeMap.set(item.store, current);
+      }
+    } else {
+      for (const row of showcaseRows) {
+        const name = String(row.vendor_name ?? row.store_name ?? "").trim();
+        if (!name) continue;
+        const current = storeMap.get(name) ?? {
+          name,
+          items: 0,
+          scoreTotal: 0,
+          local: row.local !== false,
+        };
+        current.items += 1;
+        current.scoreTotal += typeof row.score === "number" ? row.score : 0;
+        current.local = current.local && row.local !== false;
+        storeMap.set(name, current);
+      }
     }
 
     const ranked = [...storeMap.values()].sort((a, b) => {
@@ -232,12 +315,12 @@ export default function Home() {
     });
 
     return ranked[0] ?? null;
-  }, [catalogRows]);
+  }, [demoMode, demoRows, showcaseRows]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const handleQuickSelect = (product: ReturnType<typeof rankedProductToUiProduct>) => {
+  const handleQuickSelect = (product: Product) => {
     setSelectedProduct(product);
     navigate("/app/delivery");
   };
@@ -317,12 +400,14 @@ export default function Home() {
             </div>
             <div className="flex-1">
               <div className="text-white text-sm" style={{ fontWeight: 700 }}>
-                Live recommendations from your marketplace
+                {demoMode ? "Premium gifts are ready for you" : "Live recommendations from your marketplace"}
               </div>
               <div className="text-red-200 text-xs">
-                {uniqueStores > 0
-                  ? `${uniqueStores} stores are contributing to your current feed`
-                  : "Connect the backend catalog to see real recommendations"}
+                {demoMode
+                  ? `${uniqueStores} curated stores are contributing to your current feed`
+                  : uniqueStores > 0
+                    ? `${uniqueStores} stores are contributing to your current feed`
+                    : "Connect the backend catalog to see real recommendations"}
               </div>
             </div>
             <button
@@ -337,10 +422,10 @@ export default function Home() {
           <div className="px-4 sm:px-5 mb-5">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-900" style={{ fontWeight: 700 }}>
-                Live Categories
+                {demoMode ? "Categories" : "Live Categories"}
               </span>
               <span className="text-xs text-gray-400">
-                {activeCategory ? `${categoryProducts.get(activeCategory)?.length ?? 0} gifts` : "Pick a category"}
+                {activeCategory ? `${activeCategoryProducts.length} gifts` : "Pick a category"}
               </span>
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -363,7 +448,10 @@ export default function Home() {
                     </span>
                     <span
                       className="text-[10px] text-center"
-                      style={{ color: activeCategory === category ? BRAND : "#4B5563", fontWeight: activeCategory === category ? 700 : 500 }}
+                      style={{
+                        color: activeCategory === category ? BRAND : "#4B5563",
+                        fontWeight: activeCategory === category ? 700 : 500,
+                      }}
                     >
                       {category}
                     </span>
@@ -371,7 +459,7 @@ export default function Home() {
                 ))
               ) : (
                 <div className="col-span-full bg-white rounded-2xl border border-gray-100 p-4 text-sm text-gray-500">
-                  No category data yet from the live catalog.
+                  No category data yet from the catalog.
                 </div>
               )}
             </div>
@@ -390,18 +478,18 @@ export default function Home() {
                 )}
               </div>
               {activeCategory && (
-              <button
-                onClick={() => navigate("/app/gift")}
-                className="text-xs flex items-center gap-0.5"
-                style={{ color: BRAND, fontWeight: 700 }}
-              >
+                <button
+                  onClick={() => navigate("/app/gift")}
+                  className="text-xs flex items-center gap-0.5"
+                  style={{ color: BRAND, fontWeight: 700 }}
+                >
                   More gifts <ChevronRight className="w-3 h-3" />
                 </button>
               )}
             </div>
 
             {activeCategoryProducts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {activeCategoryProducts.map((product, index) => (
                   <div
                     key={`${product.category}-${product.id}-${index}`}
@@ -409,7 +497,16 @@ export default function Home() {
                   >
                     <div className="flex gap-3">
                       <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(event) => {
+                            if (product.fallbackImage && event.currentTarget.src !== product.fallbackImage) {
+                              event.currentTarget.src = product.fallbackImage;
+                            }
+                          }}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
@@ -425,11 +522,12 @@ export default function Home() {
                             P{product.price}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-1 min-w-0">
-                          <MapPin className="w-2.5 h-2.5 text-gray-400" />
-                          <span className="text-xs text-gray-400 truncate">
-                            {product.store} | {product.location}
-                          </span>
+                        <div className="flex items-center gap-2 mt-1 min-w-0">
+                          {product.storeLogo ? (
+                            <img src={product.storeLogo} alt={product.store} className="w-5 h-5 rounded-md border border-gray-100 bg-white shrink-0" />
+                          ) : null}
+                          <MapPin className="w-2.5 h-2.5 text-gray-400 shrink-0" />
+                          <span className="text-xs text-gray-400 truncate">{product.store} | {product.location}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           <span
@@ -467,11 +565,11 @@ export default function Home() {
                         {(product.stock ?? 0) > 0 ? "Buy Now" : "Unavailable"}
                       </button>
                       <button
-                        onClick={() => setSearchQuery(product.name)}
+                        onClick={() => setDetailProduct(product)}
                         className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700"
                         style={{ fontWeight: 700 }}
                       >
-                        Search
+                        Details
                       </button>
                     </div>
                   </div>
@@ -480,8 +578,12 @@ export default function Home() {
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 text-sm text-gray-500">
                 {loading
-                  ? "Loading category gifts from the live catalog..."
-                  : "This category does not have any matching gifts yet."}
+                  ? demoMode
+                    ? "Loading category gifts..."
+                    : "Loading category gifts from the live catalog..."
+                  : demoMode
+                    ? "This category does not have any gifts yet."
+                    : "This category does not have any matching gifts yet."}
               </div>
             )}
           </div>
@@ -498,18 +600,27 @@ export default function Home() {
 
             {loading && topPicks.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 text-sm text-gray-500">
-                Loading live recommendations...
+                {demoMode ? "Loading recommendations..." : "Loading live recommendations..."}
               </div>
             ) : topPicks.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {topPicks.map((product) => (
                   <div
                     key={product.id}
                     className="flex items-center gap-3 rounded-2xl p-3 border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all cursor-pointer"
-                    onClick={() => navigate("/app/gift")}
+                    onClick={() => setDetailProduct(product)}
                   >
                     <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                        onError={(event) => {
+                          if (product.fallbackImage && event.currentTarget.src !== product.fallbackImage) {
+                            event.currentTarget.src = product.fallbackImage;
+                          }
+                        }}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       {product.badge && (
@@ -523,11 +634,12 @@ export default function Home() {
                       <div className="text-sm text-gray-900 truncate" style={{ fontWeight: 700 }}>
                         {product.name}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-                        <MapPin className="w-2.5 h-2.5 text-gray-400" />
-                        <span className="text-xs text-gray-400 truncate">
-                          {product.store} | {product.location}
-                        </span>
+                      <div className="flex items-center gap-2 mt-0.5 min-w-0">
+                        {product.storeLogo ? (
+                          <img src={product.storeLogo} alt={product.store} className="w-5 h-5 rounded-md border border-gray-100 bg-white shrink-0" />
+                        ) : null}
+                        <MapPin className="w-2.5 h-2.5 text-gray-400 shrink-0" />
+                        <span className="text-xs text-gray-400 truncate">{product.store} | {product.location}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm" style={{ color: BRAND, fontWeight: 800 }}>
@@ -548,24 +660,36 @@ export default function Home() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleQuickSelect(product);
-                      }}
-                      disabled={(product.stock ?? 0) <= 0}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0 disabled:opacity-60"
-                      style={{ background: (product.stock ?? 0) > 0 ? BRAND : "#9CA3AF" }}
-                      title={(product.stock ?? 0) > 0 ? "Buy this gift now" : "This gift is currently unavailable"}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDetailProduct(product);
+                        }}
+                        className="px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-700 bg-white"
+                        style={{ fontWeight: 700 }}
+                      >
+                        Details
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleQuickSelect(product);
+                        }}
+                        disabled={(product.stock ?? 0) <= 0}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-60"
+                        style={{ background: (product.stock ?? 0) > 0 ? BRAND : "#9CA3AF" }}
+                        title={(product.stock ?? 0) > 0 ? "Buy this gift now" : "This gift is currently unavailable"}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 text-sm text-gray-500">
-                No products matched the current live catalog filters.
+                No products matched the current filters.
               </div>
             )}
           </div>
@@ -580,8 +704,10 @@ export default function Home() {
               </div>
               <div className="text-xs text-gray-400">
                 {uniqueStores > 0
-                  ? `Featuring ${uniqueStores} stores from the live marketplace catalog`
-                  : "Connect Supabase-backed catalog data to spotlight local vendors"}
+                  ? demoMode
+                    ? `Featuring ${uniqueStores} curated stores from the current catalog`
+                    : `Featuring ${uniqueStores} stores from the live marketplace catalog`
+                  : "Connect catalog data to spotlight local vendors"}
               </div>
             </div>
             <div className="flex ml-auto">
@@ -638,7 +764,7 @@ export default function Home() {
                   </button>
                 ))
               ) : (
-                <span className="text-xs text-gray-400">No live trend tags available yet.</span>
+                <span className="text-xs text-gray-400">No trend tags available yet.</span>
               )}
             </div>
           </div>
@@ -657,7 +783,7 @@ export default function Home() {
                     {storeSpotlight.name}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {storeSpotlight.items} live listing{storeSpotlight.items === 1 ? "" : "s"} | {storeSpotlight.local ? "Local vendor" : "Marketplace"}
+                    {storeSpotlight.items} {storeSpotlight.items === 1 ? "featured gift" : "featured gifts"} | {storeSpotlight.local ? "Local vendor" : "Marketplace"}
                   </div>
                   <div className="flex items-center gap-0.5 mt-1">
                     {[1, 2, 3, 4, 5].map((value) => (
@@ -667,11 +793,19 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-gray-400">No live store data available yet.</div>
+              <div className="text-xs text-gray-400">No store data available yet.</div>
             )}
           </div>
         </div>
       </div>
+      <ProductDetailModal
+        product={detailProduct}
+        onClose={() => setDetailProduct(null)}
+        onBuyNow={(product) => {
+          setDetailProduct(null);
+          handleQuickSelect(product);
+        }}
+      />
     </div>
   );
 }
